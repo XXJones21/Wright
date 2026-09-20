@@ -43,11 +43,11 @@ For each: parent class, variables (list_variables), functions (list_functions), 
 
 ## TOOL API
 
-Per toolset the run will touch: a `### <fully qualified toolset name>` heading, then the raw describe_toolset result as a JSON block. The tool-call gate reads these.
+Per toolset the run will touch: a `### <fully qualified toolset name>` heading, then a COMPACT json fence carrying only tool names, one-line descriptions, and argument keys, in the shape `{"tools": [{"name": "<fully qualified name>.<tool>", "description": "<first sentence>", "inputSchema": {"properties": {"<argkey>": {}}}}]}`. No nested schemas, defaults, or titles. The tool-call gate reads these. The raw describe_toolset results live in `<run_dir>/toolapi/<fully qualified name>.json`; an agent that needs an argument's full shape Reads that file.
 
 ## PROJECT SKILLS
 
-Output of AgentSkillToolset.GetSkills for every skill ListSkills returned whose description matches the task (always: BlueprintBasicsSkill, MaterialBasicsSkill). These rank above Wright's defaults.
+Output of AgentSkillToolset.GetSkills for the skill paths ListSkills returned whose names end in BlueprintBasicsSkill and MaterialBasicsSkill, plus any whose description matches the task; those exact paths are passed to GetSkills {skillPaths: [...]}. These rank above Wright's defaults.
 
 ## Append order (do not pre-create these headings)
 

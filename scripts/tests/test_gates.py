@@ -142,3 +142,37 @@ def test_run_without_artifacts_reports_inconclusive_result(tmp_path):
     section = gates.run(run)
     assert "RESULT: INCONCLUSIVE" in section
     assert "RESULT: FAIL" not in section
+
+COMPACT_TOOL_API = """
+## TOOL API
+
+### editor_toolset.toolsets.scene.SceneTools
+```json
+{"tools": [{"name": "editor_toolset.toolsets.scene.SceneTools.add_to_scene_from_class", "description": "Spawn an actor of a class into the current level.", "inputSchema": {"properties": {"actor_type": {}, "name": {}, "xform": {}, "parent": {}, "snap_to_ground": {}}}}, {"name": "editor_toolset.toolsets.scene.SceneTools.find_actors", "description": "Find actors in the current level.", "inputSchema": {"properties": {"root": {}, "name": {}, "actor_type": {}, "tag": {}, "bounds": {}, "collision_channels": {}}}}]}
+```
+
+## PROJECT SKILLS
+"""
+
+def test_parse_tool_api_reads_the_compact_fence():
+    api = gates.parse_tool_api(COMPACT_TOOL_API)
+    ts = api["editor_toolset.toolsets.scene.SceneTools"]
+    assert set(ts) == {"add_to_scene_from_class", "find_actors"}
+    assert ts["add_to_scene_from_class"] == {"actor_type", "name", "xform", "parent", "snap_to_ground"}
+    assert gates.tool_call_gate(api, gates.parse_call_ledger(LEDGER_OK), "blockout") == []
+
+def test_run_twice_replaces_the_gate_section(tmp_path):
+    run = tmp_path / "run"; (run / "artifacts").mkdir(parents=True)
+    plan = run / "plan.md"
+    plan.write_text("# plan\n\n## PROJECT GPS\n\nBP_FirstPersonCharacter\n" + TOOL_API, encoding="utf-8")
+    art = run / "artifacts" / "01-blockout.md"
+    art.write_text(LEDGER_BAD, encoding="utf-8")
+    gates.run(run)
+    assert "RESULT: FAIL" in plan.read_text(encoding="utf-8")
+    art.write_text(LEDGER_OK, encoding="utf-8")
+    gates.run(run)
+    text = plan.read_text(encoding="utf-8")
+    assert text.count("## Gate") == 1
+    assert "RESULT: PASS" in text
+    assert "RESULT: FAIL" not in text
+    assert "## PROJECT GPS" in text and "## TOOL API" in text

@@ -20,4 +20,10 @@ Epic's `unreal-mcp` skill (plugin `unreal-engine-skills-for-claude-code`) owns d
 - Structural changes need a compile before they exist on the CDO.
 
 ## Ledger
-Every mutating and read call an executor makes goes into its artifact's `CALL LEDGER` fence as `{"toolset": "<fully qualified>", "tool": "<name>", "args": ["<key>", ...]}` so the tool-call gate can check it.
+Every mutating and read call an executor makes goes into its artifact's `CALL LEDGER` fence, one json object per line, so the tool-call gate can check it:
+
+```jsonl
+{"toolset": "editor_toolset.toolsets.scene.SceneTools", "tool": "add_to_scene_from_class", "args": ["actor_type", "name", "xform", "parent", "snap_to_ground"]}
+```
+
+The ledger's toolset is the fully qualified name exactly as the `### ` heading in the plan's TOOL API gives it; the short names in the playbooks and profile are prose shorthand.

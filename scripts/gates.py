@@ -187,6 +187,15 @@ def _section(plan_text: str, heading_prefix: str) -> str:
     return m.group(1) if m else ""
 
 
+_GATE_SECTION = re.compile(r"^## Gate[^\n]*\n(?:(?!^## ).*\n?)*", re.MULTILINE)
+
+
+def strip_gate_sections(plan_text: str) -> str:
+    """Remove every existing `## Gate` section (heading through the line before
+    the next `## ` heading, or the end of the file) so a re-run leaves one."""
+    return _GATE_SECTION.sub("", plan_text or "")
+
+
 def run(run_dir: Path) -> str:
     run_dir = Path(run_dir)
     plan_path = run_dir / "plan.md"
@@ -231,8 +240,8 @@ def run(run_dir: Path) -> str:
         lines.append(f"RESULT: {status}. " + ("The Validator may not sign off; the builder must re-emit." if status == "FAIL"
                      else "The Validator still performs the prose-level scan."))
     section = "\n".join(lines) + "\n"
-    with plan_path.open("a", encoding="utf-8") as fh:
-        fh.write("\n" + section)
+    kept = strip_gate_sections(plan).rstrip("\n")
+    plan_path.write_text((kept + "\n" if kept else "") + "\n" + section, encoding="utf-8")
     return section
 
 

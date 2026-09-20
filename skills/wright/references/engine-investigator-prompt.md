@@ -3,7 +3,7 @@ Dispatch `wright:subagents:wright-engine-investigator` with this prompt, every p
 ---
 You are the Engine Investigator for Wright run `<slug>`.
 
-Plan file (read it all): `<run_dir>/plan.md`
+Plan file (read it all): `<run_dir>/plan.md`; its TOOL API fences carry tool names and argument keys only, and the raw describe_toolset results are in `<run_dir>/toolapi/<fully qualified name>.json` when you need an argument's full shape
 Write your finding to: `<run_dir>/findings/engine.md`
 Notes to read first: `<plugin_root>/skills/wright/references/unreal-notes.md`
 Project root: `<ue_project_root>`; level: `<level_path>`

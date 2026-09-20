@@ -49,10 +49,10 @@ def test_playbooks_exist():
 import yaml  # pip install pyyaml
 
 AGENTS = {
-    "engine-investigator": {"name": "wright-engine-investigator", "must_have": ["mcp__unreal-mcp__call_tool", "mcp__unreal-mcp__describe_toolset"], "must_not": ["Write", "Edit"]},
+    "engine-investigator": {"name": "wright-engine-investigator", "must_have": ["mcp__unreal-mcp__call_tool", "mcp__unreal-mcp__describe_toolset"], "must_not": ["Edit"]},
     "reference-investigator": {"name": "wright-reference-investigator", "must_have": ["WebSearch", "WebFetch"], "must_not": ["mcp__unreal-mcp__call_tool"]},
     "build-executor": {"name": "wright-build-executor", "must_have": ["mcp__unreal-mcp__call_tool", "mcp__plugin_comfy-local-mcp_comfy-local__generate_image", "Bash", "Write"], "must_not": []},
-    "validator": {"name": "wright-validator", "must_have": ["mcp__unreal-mcp__call_tool"], "must_not": ["Write", "Edit", "mcp__plugin_comfy-local-mcp_comfy-local__generate_image"]},
+    "validator": {"name": "wright-validator", "must_have": ["mcp__unreal-mcp__call_tool"], "must_not": ["Edit", "mcp__plugin_comfy-local-mcp_comfy-local__generate_image"]},
 }
 
 def _frontmatter(p):

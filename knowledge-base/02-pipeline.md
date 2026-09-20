@@ -1,6 +1,6 @@
 # Pipeline
 
-Conductor: the main-context agent running `skills/wright/SKILL.md`. It holds Plan and Synthesize and never delegates them. Run dir: `<RUNS_DIR>/<slug>/` with `plan.md`, `findings/`, `artifacts/`, `plates/`, `captures/`.
+Conductor: the main-context agent running `skills/wright/SKILL.md`. It holds Plan and Synthesize and never delegates them. Run dir: `<RUNS_DIR>/<slug>/` with `plan.md`, `findings/`, `artifacts/`, `toolapi/`, `plates/`, `captures/`.
 
 | Step | Owner | Blocking | Output |
 | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ Revise loop: a revise verdict routes to Synthesize (design gap) or Execute (arti
 - The MCP executes tool calls serially on the game thread, and Epic's guidance is to serialize anything that touches shared editor state. Wright treats the MCP as single-threaded: **build executors run one at a time**, in the order the BUILD TASKS block gives.
 - The two investigators run in parallel: the reference investigator never touches the MCP, and the engine investigator issues read-only calls.
 - The conductor never calls the MCP while a subagent that holds MCP tools is running.
-- One `[texture]` generation at a time; one GPU serves ComfyUI. Texture generation may overlap with an executor's MCP work only when the conductor runs it between executors.
+- One `[texture]` generation at a time; one GPU serves ComfyUI. Texture generation never overlaps an executor's MCP work; the conductor runs plates only between executors.
 
 ## 4.2 Executor discipline
 
@@ -45,7 +45,7 @@ Every executor logs every `call_tool` to its ledger and checks each result: many
 3. Design coverage: every INV resolved or explicitly OPEN; dropped ones listed.
 4. Needs You completeness: every capability the loop needs that the MCP could not build has a spec with verifiable steps.
 
-PIE: `StartPIE`/`StopPIE` exist. Whether the validator uses them in v1 is decided at the live survey; the default is no, because editor-only tools misbehave during PIE.
+PIE: `StartPIE`/`StopPIE` exist, but PIE is off in v1. The validator never calls `StartPIE`; it grades against the editor world, because editor-only tools misbehave during PIE.
 
 ## Plan file section order
 

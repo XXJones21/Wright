@@ -43,11 +43,11 @@ Lane: <lane>
 
 CALL LEDGER
 ```jsonl
-{"toolset": "<fully qualified toolset>", "tool": "<tool>", "args": ["<key>", ...]}
+{"toolset": "editor_toolset.toolsets.scene.SceneTools", "tool": "add_to_scene_from_class", "args": ["actor_type", "name", "xform", "parent", "snap_to_ground"]}
 ```
 ```
 
-One line per call you made, in order, including read-only calls. The gate checks this against the TOOL API.
+One line per call you made, in order, including read-only calls, in the shape of the example above. The gate checks this against the TOOL API. The ledger's toolset is the fully qualified name exactly as the `### ` heading in the plan's TOOL API gives it; the short names in the playbooks and profile are prose shorthand.
 
 ## Output contract
 Return the artifact path and one line: what exists now that did not before. Do not edit the plan file.

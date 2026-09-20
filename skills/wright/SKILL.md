@@ -23,7 +23,7 @@ Read `references/machine-config.md`; if absent, `references/machine-config.examp
 
 ## Gate 1: create the run and the grounding floor (blocking)
 
-1. Slug the task (kebab, 40 chars max, prefix with the date `YYYYMMDD-`). `mkdir` `<RUNS_DIR>/<slug>/` with `findings/`, `artifacts/`, `captures/`, `plates/`.
+1. Slug the task (kebab, 40 chars max, prefix with the date `YYYYMMDD-`). `mkdir` `<RUNS_DIR>/<slug>/` with `findings/`, `artifacts/`, `captures/`, `plates/`, `toolapi/`.
 2. Copy `references/plan-template.md` to `<run_dir>/plan.md`, and delete the `## Append order` section from the copy (it is documentation for you, not run state); fill the header except the level line, and fill `## Task` with the task text verbatim. Read the file back; if it is missing or empty, stop.
 3. `## Engine grounding config`: paste `<plugin_root>/profiles/ue5.config.json` verbatim in a json fence.
 4. `## PROJECT GPS`, read-only, in this order (every parameter key present):
@@ -32,8 +32,14 @@ Read `references/machine-config.md`; if absent, `references/machine-config.examp
    - `AssetTools.list_folders {root_path:"/Game", recursive:false}`; `find_assets {folder_path:"/Game", name:"", asset_type:{refPath:"/Script/Engine.Blueprint"}, recursive:true, tags:null}`; same with `/Script/Engine.Material`, `/Script/Engine.Texture2D`, `/Script/Engine.DataTable`. Record object paths (package path plus `.` plus asset name).
    - For each Blueprint the task names or that the level's PlayerStart or GameMode obviously depends on (at most 5), with `blueprint` as `{"refPath": "<object path>"}`: `BlueprintTools.get_parent {blueprint}`, `list_variables {blueprint, graph: null}`, `list_functions {blueprint}`, `list_events {blueprint}`, `get_graph {blueprint, graph_name: "EventGraph"}`, `read_graph_dsl {graph}`.
    - Write the section per the template. If the text exceeds `GPS_MAX_CHARS`, cut the actor table last and append `GPS TRUNCATED at <n> chars: <what was cut>`.
-5. `## TOOL API`: `describe_toolset` for `editor_toolset.toolsets.scene.SceneTools`, `editor_toolset.toolsets.actor.ActorTools`, `editor_toolset.toolsets.asset.AssetTools`, `editor_toolset.toolsets.blueprint.BlueprintTools`, `editor_toolset.toolsets.material.MaterialTools`, `editor_toolset.toolsets.material_instance.MaterialInstanceTools`, `editor_toolset.toolsets.texture.TextureTools`, `editor_toolset.toolsets.object.ObjectTools`, `editor_toolset.toolsets.primitive.PrimitiveTools`, `editor_toolset.toolsets.static_mesh.StaticMeshTools`, `editor_toolset.toolsets.data_table.DataTableTools`, `editor_toolset.toolsets.programmatic.ProgrammaticToolset`, `EditorToolset.EditorAppToolset`, `EditorToolset.LogsToolset`, `GameplayTagsToolset.GameplayTagsToolset`, `ToolsetRegistry.AgentSkillToolset`. Paste each raw result in its own json fence under a `### <fully qualified name>` heading. Then `BlueprintTools.get_graph_dsl_docs {}` under `### DSL`.
-6. `## PROJECT SKILLS`: `AgentSkillToolset.ListSkills {}`; then `GetSkills {skillPaths:[...]}` for every skill whose description matches the task plus always `BlueprintBasicsSkill` and `MaterialBasicsSkill`; paste the instructions.
+5. `## TOOL API`: `describe_toolset` for `editor_toolset.toolsets.scene.SceneTools`, `editor_toolset.toolsets.actor.ActorTools`, `editor_toolset.toolsets.asset.AssetTools`, `editor_toolset.toolsets.blueprint.BlueprintTools`, `editor_toolset.toolsets.material.MaterialTools`, `editor_toolset.toolsets.material_instance.MaterialInstanceTools`, `editor_toolset.toolsets.texture.TextureTools`, `editor_toolset.toolsets.object.ObjectTools`, `editor_toolset.toolsets.primitive.PrimitiveTools`, `editor_toolset.toolsets.static_mesh.StaticMeshTools`, `editor_toolset.toolsets.data_table.DataTableTools`, `editor_toolset.toolsets.programmatic.ProgrammaticToolset`, `EditorToolset.EditorAppToolset`, `EditorToolset.LogsToolset`, `GameplayTagsToolset.GameplayTagsToolset`, `ToolsetRegistry.AgentSkillToolset`. Save each raw result to `<run_dir>/toolapi/<fully qualified name>.json` with the Write tool; the raw results together run to hundreds of kilobytes and never go in the plan. Under a `### <fully qualified name>` heading paste a COMPACT json fence of exactly this shape, names and argument keys only, with no nested schemas, defaults, or titles:
+
+   ```json
+   {"tools": [{"name": "<fully qualified name>.<tool>", "description": "<first sentence of the tool description>", "inputSchema": {"properties": {"<argkey>": {}, ...}}}, ...]}
+   ```
+
+   An agent that needs an argument's full shape Reads `<run_dir>/toolapi/<fully qualified name>.json`. Then `BlueprintTools.get_graph_dsl_docs {}` under `### DSL`.
+6. `## PROJECT SKILLS`: `AgentSkillToolset.ListSkills {}`, which returns a map of full skill object paths to descriptions. Take the skill paths `ListSkills` returned whose names end in `BlueprintBasicsSkill` and `MaterialBasicsSkill`, plus any whose description matches the task; pass those exact paths to `GetSkills {skillPaths: [...]}` and paste the instructions.
 
 ## Beat 1: Plan (you)
 
@@ -54,6 +60,7 @@ Read the whole plan. Append `## Synthesis (design)`, naming your stage:
 - Resolve EVERY INV: `LOCKED <value> because <why>`, `FORK (a) ... (b) ...` (the choice left to the designer), or `OPEN: <the specific quantity a playtest must tune>`. Prose like "it tracks progress" is not a decision; the count, threshold, and value are. Every need a gap named gets its own resolution.
 - Instrument the core action: what fires it, what it counts toward, the threshold, the feedback per step, exactly what the player receives, as values a builder can implement. Carry provisioning and every exit case.
 - Build against what exists (the GPS) before net-new systems.
+- VANTAGE: one line naming the camera transform (location and rotation) or the actor to `FocusOnActors` from which the result should be judged; the validator captures from it.
 - Concept plates: for each FORK that is visual, if comfy is up, `recommend_workflow {goal:"image concept art"}` then `generate_image {prompt, workflow:<comfy_plate_workflow>, width:1024, height:576}` per option; save or link the returned file under `<run_dir>/plates/` and cite it beside the fork.
 - End with the exact block:
 
@@ -66,11 +73,11 @@ If `--stop-after synthesize`, go to Close.
 
 ## Beat 4: Execute (build executors, ONE AT A TIME)
 
-Parse the BUILD TASKS block (the same rules as `scripts/gates.py parse_build_tasks`: `- [lane] title: brief`, lane defaults to editor). For each task in order: fill `references/build-executor-prompt.md`, dispatch `wright:subagents:wright-build-executor`, wait for it to return, then append its artifact file under `## Artifact <n>: <title>` verbatim. Never dispatch the next executor before the previous returns. Do not call the MCP yourself while an executor runs. If an executor returns without an artifact file, record `## Artifact <n>: <title>` with "NOT PRODUCED: <its reply>" and continue.
+Parse the BUILD TASKS block (the same rules as `scripts/gates.py parse_build_tasks`: `- [lane] title: brief`, lane defaults to editor). `<nn>` is the two-digit task index in that order, `01` upward; `<slug-title>` is the task title kebab-cased, 40 chars max. For each task in order: fill `references/build-executor-prompt.md`, dispatch `wright:subagents:wright-build-executor`, wait for it to return, then append its artifact file under `## Artifact <n>: <title>` verbatim. Never dispatch the next executor before the previous returns. Do not call the MCP yourself while an executor runs. If an executor returns without an artifact file, record `## Artifact <n>: <title>` with "NOT PRODUCED: <its reply>" and continue.
 
 ## Gates (deterministic)
 
-Run `python <plugin_root>/scripts/gates.py <run_dir>` with Bash. It appends `## Gate` to the plan and prints it; exit 1 means FAIL. On FAIL: re-dispatch each named executor once, ONE AT A TIME as in Beat 4, with the gate's lines added to the brief ("remove these symbols / calls"), replace the artifact file, delete the old `## Gate` section from the plan (it is the last section), and run the gate again. A second FAIL proceeds to Validate with the FAIL standing. On INCONCLUSIVE: do not proceed to Validate; record the reason in `## Close` and halt for operator review, because the gate could not check anything.
+Run `python <plugin_root>/scripts/gates.py <run_dir>` with Bash. It appends `## Gate` to the plan and prints it; exit 1 means FAIL. On FAIL: re-dispatch each named executor once, ONE AT A TIME as in Beat 4, with the gate's lines added to the brief ("remove these symbols / calls"), replace the artifact file, and run the gate again; the script replaces any previous Gate section, so the plan always carries exactly one. A second FAIL proceeds to Validate with the FAIL standing. On INCONCLUSIVE: do not proceed to Validate; record the reason in `## Close` and halt for operator review, because the gate could not check anything.
 
 Then re-snapshot the GPS exactly as in Gate 1 step 4 and append it under `## PROJECT GPS (post-build)`.
 If `--stop-after execute`, go to Close.

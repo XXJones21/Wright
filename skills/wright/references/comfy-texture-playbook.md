@@ -2,6 +2,8 @@
 
 For one `[texture]` build task: a seamless PBR tile onto a named surface. One generation at a time.
 
+The ledger's toolset is the fully qualified name exactly as the `### ` heading in the plan's TOOL API gives it; the short names below are prose shorthand.
+
 1. Read the plan's `TOOL API` blocks for `TextureTools`, `MaterialTools`, `MaterialInstanceTools`, `AssetTools`, `ActorTools`, `ObjectTools`, and `EditorAppToolset`, and `PROJECT SKILLS` (MaterialBasicsSkill). Build every argument object from those schemas; pass every key.
 2. `mcp__plugin_comfy-local-mcp_comfy-local__health`. If unreachable, write the task as a Needs You spec (prompt, target surface, import steps) and stop.
 3. `..._list_workflows` and confirm `<comfy_texture_workflow>` is listed; else `..._recommend_workflow {goal:'image seamless tileable texture'}` and use its `workflow` and `overrides`.

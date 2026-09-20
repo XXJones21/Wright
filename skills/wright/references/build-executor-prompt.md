@@ -7,7 +7,7 @@ Lane: [<lane>]
 Title: <title>
 Brief: <brief>
 
-Plan file (read it all, especially Synthesis (design) and Finding: engine): `<run_dir>/plan.md`
+Plan file (read it all, especially Synthesis (design) and Finding: engine): `<run_dir>/plan.md`; its TOOL API fences carry tool names and argument keys only, and the raw describe_toolset results are in `<run_dir>/toolapi/<fully qualified name>.json` when you need an argument's full shape
 Write the artifact to: `<run_dir>/artifacts/<nn>-<slug-title>.md`
 Captures dir: `<run_dir>/captures/`
 Notes and playbooks: `<plugin_root>/skills/wright/references/unreal-notes.md`, `<plugin_root>/skills/wright/references/blueprint-lane-playbook.md`, `<plugin_root>/skills/wright/references/comfy-texture-playbook.md`

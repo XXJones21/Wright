@@ -11,7 +11,7 @@ Wright is the method. Unreal onboarding comes from Epic's `unreal-engine-skills-
 3. In the editor console: `ModelContextProtocol.GenerateClientConfig ClaudeCode`. This writes `.mcp.json` next to the `.uproject`.
 4. Claude Code plugins: `unreal-engine-skills-for-claude-code@claude-plugins-official` and `comfy-local-mcp@josh-plugins`, plus this plugin (`wright@josh-plugins`).
 5. ComfyUI running with comfy-local configured (`/comfy-setup` if not).
-6. Python 3.11+ with `numpy` and `pillow` for the texture scripts, `pytest` for the tests.
+6. Python 3.11+ with `numpy` and `pillow` for the texture scripts, `pytest` and `pyyaml` for the tests.
 
 ## First run
 
@@ -20,7 +20,7 @@ Wright is the method. Unreal onboarding comes from Epic's `unreal-engine-skills-
 3. Launch Claude Code from the project root (or from the editor's Terminal panel).
 4. `/wright:run Design and build the Mission 1 evidence-collection slice --stop-after synthesize` for a design-only pass, or omit the flag for a full build.
 
-Runs land in `<UE_PROJECT_ROOT>/wright/runs/<slug>/`: `plan.md` is the shared state, `artifacts/` holds what was built and the Needs You specs, `plates/` the concept plates, `captures/` the viewport captures.
+Runs land in `<UE_PROJECT_ROOT>/wright/runs/<slug>/`: `plan.md` is the shared state, `findings/` the investigator and validator findings, `artifacts/` what was built and the Needs You specs, `toolapi/` the raw describe_toolset results the plan's compact TOOL API summarizes, `plates/` the concept plates, `captures/` the viewport captures.
 
 ## Changing the port
 
