@@ -1,7 +1,7 @@
 # Wright standalone plugin: design spec
 
 Date: 2026-09-19 (revised 2026-09-20 after the static and live tool survey)
-Status: approved in brainstorm; revised; live survey complete except the tool-name prefix; awaiting written-spec review
+Status: approved in brainstorm; revised; survey complete; awaiting written-spec review
 Scope: port Wright from the Valar/Hearth harness into a standalone Claude Code plugin, retargeted from UEFN/Verse to Unreal Engine 5.8 through Epic's official Unreal MCP, layered on Epic's `unreal-engine-skills-for-claude-code` plugin, with ComfyUI (comfy-local-mcp) as the texture and concept-plate lane.
 
 ## 1. Context and decisions
@@ -64,7 +64,7 @@ Machine config fields: `UE_PROJECT_ROOT`, `RUNS_DIR` (default `<UE_PROJECT_ROOT>
 
 Wright does not ship an MCP server entry. The connection is the project's `.mcp.json`, written by `ModelContextProtocol.GenerateClientConfig ClaudeCode` in the editor console, with Claude Code launched from the project root (or from the editor's Terminal panel, per Epic's doc). Retrieval already has this file pointing at `http://127.0.0.1:8000/mcp`.
 
-Tool names therefore follow the project-server form: `mcp__unreal-mcp__list_toolsets`, `mcp__unreal-mcp__describe_toolset`, `mcp__unreal-mcp__call_tool`. Every Wright agent's `tools:` frontmatter grants those three plus the comfy-local tools it needs. Epic's optional `unreal-mcp-proxy` is out of scope for v1; the README notes it.
+Tool names follow the project-server form, confirmed verbatim from a session launched in Retrieval on 2026-09-20: `mcp__unreal-mcp__list_toolsets` (no arguments), `mcp__unreal-mcp__describe_toolset` (`toolset_name`), `mcp__unreal-mcp__call_tool` (`tool_name`, `toolset_name`, `arguments`). They arrive as **deferred** tools, so the conductor's Gate 0 begins with one ToolSearch call loading all three by name before anything else; leaf agents grant them in `tools:` frontmatter plus the comfy-local tools they need. Epic's optional `unreal-mcp-proxy` (server name `unreal-mcp-proxy`, different prefix) is out of scope for v1; the README notes it.
 
 The README covers: install `unreal-engine-skills-for-claude-code@claude-plugins-official`; enable `ModelContextProtocol` and `AllToolsets` (with only the former enabled the server exposes no editor tools, which is exactly what the survey hit on Retrieval); Editor Preferences > General > Model Context Protocol > Auto Start Server; `GenerateClientConfig ClaudeCode`; changing the port on both sides; `RefreshTools` after enabling a toolset plugin.
 
@@ -203,7 +203,7 @@ Blender mesh-artist lane; the Dreamwave bridge (end goal: Wright, comfy-local-mc
 
 Resolved by the static and live survey (`knowledge-base/03-tool-survey.md`): asset discovery (`AssetTools.find_assets`); ActorTools getter names; class discovery (`ObjectTools.search_subclasses`, `list_properties`); deselect (`SelectActors([])`); the gameplay authoring boundary (Blueprints, data tables, tags, materials, widgets are authorable; C++ and level creation are not); fully qualified toolset names; schemas match the static inventory for all 17 catalog toolsets; DSL docs and execution-environment text saved to `references/`; `CaptureViewport` works with `captureTransform: null` after `SelectActors([])`; `read_graph_dsl` on the FPS character Blueprint reads back cleanly; 20 project Agent Skills are listed, including Epic's four EditorToolset skills and PCG's `Skill_InstantLevelOperations`.
 
-Still open: the `mcp__unreal-mcp__*` prefix and coexistence with Epic's plugin, confirmed at the wiring smoke from a session launched in `D:\UnrealProjects\Retrieval`. PIE for the Validator stays off in v1.
+Also resolved (2026-09-20, from a session launched in Retrieval): the prefix is `mcp__unreal-mcp__`, the three meta-tools are deferred and need a ToolSearch load, and `list_toolsets` returns 52 toolsets. Epic's plugin was not installed in that session; installing it is a README prerequisite and is exercised by the wiring smoke. PIE for the Validator stays off in v1. No open items remain for the spec.
 
 ## 10. Tool catalog
 
@@ -274,4 +274,4 @@ Ran 2026-09-20 with `AllToolsets` enabled; results are in `knowledge-base/03-too
 3. DSL docs and execution environment: saved to `references/`.
 4. Capture after `SelectActors([])`: done, clean apart from editor sprites.
 5. PIE for the Validator: off in v1.
-6. Tool-name prefix and coexistence with Epic's plugin: pending, part of the wiring smoke (section 7.2).
+6. Tool-name prefix: done, `mcp__unreal-mcp__*`, deferred. Coexistence with Epic's plugin: checked at the wiring smoke once it is installed (section 7.2).

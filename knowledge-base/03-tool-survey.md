@@ -120,7 +120,13 @@ Status: complete except the Claude Code tool-name prefix (needs a session launch
 4. Object references are `{"refPath": "..."}` everywhere, in and out. Actor refPaths look like `/Game/<Level>.<Level>:PersistentLevel.<ActorName>`; graph refPaths like `/Game/.../BP_X.BP_X:EventGraph`.
 5. Tools return `{"returnValue": ...}`; a parameter or schema error comes back as a plain string starting with `Function "` or `Parameter error:` rather than an MCP error, so executors must string-check results.
 
+### Claude Code tool names (confirmed from a session launched in Retrieval, 2026-09-20)
+
+- `mcp__unreal-mcp__list_toolsets` (no arguments), `mcp__unreal-mcp__describe_toolset` (`toolset_name`), `mcp__unreal-mcp__call_tool` (`tool_name`, `toolset_name`, `arguments`). Hyphen in the server segment, double underscores as separators.
+- All three are **deferred**: they appear by name only and must be loaded with one ToolSearch call (`select:mcp__unreal-mcp__list_toolsets,mcp__unreal-mcp__describe_toolset,mcp__unreal-mcp__call_tool`) before use. Gate 0 in SKILL.md starts with that call.
+- `list_toolsets` from that session returned 52 toolsets. C++ toolsets are `Plugin.Class` (`EditorToolset.EditorAppToolset`); Python toolsets are `package.toolsets.module.Class` (`editor_toolset.toolsets.scene.SceneTools`).
+- Epic's `unreal-engine-skills-for-claude-code` plugin was not installed in that session, so no Unreal SessionStart note was injected. It is a README prerequisite for Wright.
+
 ### Remaining
 
-- The `mcp__unreal-mcp__*` prefix and coexistence with Epic's plugin: confirm from a Claude Code session launched in `D:\UnrealProjects\Retrieval` (wiring smoke, spec section 7.2).
 - PIE for the Validator: `StartPIE`, `StopPIE`, `IsPIERunning` exist; not exercised. Default stays off in v1.
