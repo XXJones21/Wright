@@ -209,6 +209,8 @@ def run(run_dir: Path) -> str:
     lines = ["## Gate", ""]
     if not artifacts:
         lines.append("INCONCLUSIVE: no artifacts found under artifacts/.")
+        lines.append("")
+        lines.append("RESULT: INCONCLUSIVE. No artifacts to gate; the Validator must not sign off on an empty run.")
         status = "INCONCLUSIVE"
     else:
         status = "PASS" if not g_flags and not t_flags else "FAIL"

@@ -135,3 +135,10 @@ def test_cli_exit_code(tmp_path):
     r = subprocess.run([_sys.executable, str(script), str(run)], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "PASS" in r.stdout
+
+def test_run_without_artifacts_reports_inconclusive_result(tmp_path):
+    run = tmp_path / "run"; run.mkdir(parents=True)
+    (run / "plan.md").write_text("# plan\n" + TOOL_API, encoding="utf-8")
+    section = gates.run(run)
+    assert "RESULT: INCONCLUSIVE" in section
+    assert "RESULT: FAIL" not in section
