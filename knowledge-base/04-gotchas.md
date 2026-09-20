@@ -41,6 +41,11 @@ Every entry below is a footgun from `profiles/ue5.config.json`, in the order the
 - `BlueprintTools.write_graph_dsl` compiles the Blueprint; a compile warning or error comes back in the result text, not as an exception. Class paths, enum values, and asset refs inside DSL must be quoted strings.
   Fix: `write_graph_dsl` compiles; read the result text for warnings. Compile with `warnings_as_errors: true` once per logical unit, then `read_graph_dsl` and compare to intent.
 
+## Claude Code harness
+
+- Agent `tools:` frontmatter is advisory for Wright's subagents in the sessions tested (2026-09-20, Retrieval): a subagent declared without Edit could still call Edit on a scratch file. The read-only boundary for the engine investigator and the validator is therefore their instructions (no mutating `call_tool`, no `execute_tool_script`, no edits to the plan or the project) and the CALL LEDGER the executor writes, not the grant list.
+  Fix: keep the grant lists as documentation of intent; never rely on them as a safety boundary; the Validator's grounding check and the operator's git diff of the project are the real backstops.
+
 ## Survey source for the first two entries
 
 `knowledge-base/03-tool-survey.md` confirmed both of the entries above live before they were generalized into the profile. `find_actors({})` and `find_actors({"name": ""})` were rejected with "input param ... is required"; the working call supplied all six keys with explicit nulls, which the profile generalizes to every tool. `find_assets` returned `/Game/FirstPerson/Blueprints/BP_FirstPersonCharacter`, which `list_variables` rejected until "." plus the asset name was appended, which the profile generalizes to every Blueprint and asset tool call.

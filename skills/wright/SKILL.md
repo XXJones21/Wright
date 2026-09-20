@@ -100,4 +100,5 @@ Append `## Close` and reply to the operator with:
 - Grounding over memory: if it is not in the TOOL API, the GPS, the skills, or a read-only call, it does not exist.
 - One artifact per executor; one executor at a time; read back every write; look before hand-off.
 - Add-only in the project. Everything under `/Game/Wright/<slug>/` and `Wright/<slug>`.
+- Tool grants on the leaf agents are advisory, not a boundary; the agents' instructions and the CALL LEDGER are what keep the investigators and the validator read-only in the editor.
 - No emojis, no em-dashes in anything you write.
