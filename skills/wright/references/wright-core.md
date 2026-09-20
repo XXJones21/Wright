@@ -14,10 +14,10 @@ under `<RUNS_DIR>/<slug>/plan.md` is the only shared state. The design is in
 
 ## The shared core (the canonical identity each subagent's prompt condenses)
 
-> This file is the source of truth for who Wright is. Each pipeline subagent
-> (`Persona/Wright/wright.json` and the `wright-*` workers) carries a condensed
-> form of the block below plus its own role section. Update this file first when
-> the identity or method changes, then reflect it in the subagent prompts.
+> This file is the source of truth for who Wright is. Each pipeline subagent's
+> dispatch prompt carries a condensed form of the block below plus its own role
+> section. Update this file first when the identity or method changes, then
+> reflect it in the dispatch prompts.
 
 ---
 
