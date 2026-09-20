@@ -2,7 +2,7 @@
 
 For one `[blueprint]` build task. Every call goes in the CALL LEDGER. Stop on any result that is not an explicit success.
 
-1. Read the plan's `PROJECT SKILLS` (BlueprintBasicsSkill) and `TOOL API` for `BlueprintTools`, `ActorTools`, `AssetTools`. The DSL reference is `references/blueprint-dsl-docs.txt`; if the plan carries a newer `get_graph_dsl_docs` output, that wins.
+1. Read the plan's `PROJECT SKILLS` (BlueprintBasicsSkill) and `TOOL API` for `BlueprintTools`, `ActorTools`, `AssetTools`, `SceneTools`, `LogsToolset`. The DSL reference is `references/blueprint-dsl-docs.txt`; if the plan carries a newer `get_graph_dsl_docs` output, that wins.
 2. Folder: `AssetTools.exists {path:'/Game/Wright/<slug>'}`; if false, `create_folder`.
 3. Create: `BlueprintTools.create {folder_path:'/Game/Wright/<slug>', asset_name:'BP_<Name>', asset_type:{refPath:'/Script/Engine.Actor'}}` (or the parent the design locked, verified in TOOL API or GPS). Keep the returned ref; it is the object path form.
 4. Structure before logic: `add_variable` for every value the design named (type_name from the schema's accepted names, e.g. `int`, `float`, `bool`, `string`, `name`); `ActorTools.add_component {owner:<bp>, component_type:{refPath:'/Script/Engine.StaticMeshComponent'}, name}` for visible parts; `add_event_dispatcher` for anything another actor must react to; `set_variable_instance_editable` for tuning knobs.

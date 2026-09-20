@@ -43,52 +43,43 @@ For each: parent class, variables (list_variables), functions (list_functions), 
 
 ## TOOL API
 
-One ```json fence per toolset the run will touch, the raw describe_toolset result. The tool-call gate reads these.
-
-### <fully qualified toolset name>
-```json
-{}
-```
+Per toolset the run will touch: a `### <fully qualified toolset name>` heading, then the raw describe_toolset result as a JSON block. The tool-call gate reads these.
 
 ## PROJECT SKILLS
 
 Output of AgentSkillToolset.GetSkills for every skill ListSkills returned whose description matches the task (always: BlueprintBasicsSkill, MaterialBasicsSkill). These rank above Wright's defaults.
 
-## Plan (orchestrator)
+## Append order (do not pre-create these headings)
 
-<appended by Beat 1: GOAL, INV-n gaps through the four lenses, CLM-n claims>
+Each beat appends exactly one of the headings below, in this order, the first time it runs. Never pre-create one ahead of the beat that owns it: gates.py and later beats find a section by its first `## ` match, so a placeholder heading created early would shadow the real one appended later.
+
+```text
+## Plan (orchestrator)
+Appended by Beat 1: GOAL, INV-n gaps through the four lenses, CLM-n claims.
 
 ## Finding: engine
-
-<appended from findings/engine.md: one CLM-n: VERIFIED|REJECTED|UNVERIFIABLE line per claim, then the bottom line>
+Appended from findings/engine.md: one CLM-n: VERIFIED|REJECTED|UNVERIFIABLE line per claim, then the bottom line.
 
 ## Finding: reference
-
-<appended from findings/reference.md: grounded loop patterns, options per INV, what has no precedent>
+Appended from findings/reference.md: grounded loop patterns, options per INV, what has no precedent.
 
 ## Synthesis (design)
-
-<appended by Beat 3: every INV resolved as LOCKED / FORK / OPEN, the instrumented core action, provisioning, economy values, adversary and exits, concept plates linked, then the BUILD TASKS block>
-
+Appended by Beat 3: every INV resolved as LOCKED / FORK / OPEN, the instrumented core action, provisioning, economy values, adversary and exits, concept plates linked, then the BUILD TASKS block.
 BUILD TASKS
 - [editor|blueprint|texture|needs-you] <title>: <brief>
 
 ## Artifact <n>: <title>
-
-<appended per executor: the artifact body, the read-back evidence, capture paths, and the CALL LEDGER fence>
+Appended per executor: the artifact body, the read-back evidence, capture paths, and the CALL LEDGER fence.
 
 ## Gate
-
-<appended by scripts/gates.py>
+Appended by scripts/gates.py.
 
 ## PROJECT GPS (post-build)
-
-<re-snapshot after Execute, same shape as PROJECT GPS>
+Re-snapshot after Execute, same shape as PROJECT GPS.
 
 ## Validation
-
-<appended from the validator: four checks and VERDICT: ship|revise with the gap list>
+Appended from the validator: four checks and VERDICT: ship|revise with the gap list.
 
 ## Close
-
-<beat statuses, artifact paths, the ordered NEEDS YOU list, the save reminder>
+Beat statuses, artifact paths, the ordered NEEDS YOU list, the save reminder.
+```
