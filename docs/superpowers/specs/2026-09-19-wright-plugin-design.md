@@ -25,8 +25,9 @@ Repo: `D:\tools\claude-marketplace\wright`, its own git repository, plugin name 
 
 ```
 wright/
-  .claude-plugin/plugin.json        name, description, version, userConfig (unreal_mcp_url)
-  .mcp.json                         unreal-mcp: type http; url from user config, default http://127.0.0.1:8000/mcp
+  .claude-plugin/plugin.json        name, description, version
+  .mcp.json                         unreal-mcp: type http, http://127.0.0.1:8000/mcp (Epic's default; README covers changing it)
+  README.md                         install, editor setup (port 8000, Auto Start), changing the port, first run
   commands/run.md                   /wright:run <task> [--stop-after <beat>] [--project <ue_project_root>]
   skills/wright/SKILL.md            the conductor: identity, gates, beats, dispatch, close
   skills/wright/references/
@@ -58,17 +59,15 @@ Machine config fields: `UE_PROJECT_ROOT`, `RUNS_DIR` (default `<UE_PROJECT_ROOT>
 
 ### 2.1 MCP wiring
 
-The Unreal MCP is a session MCP shipped by the plugin, not an HTTP client script. `.mcp.json`:
+The Unreal MCP is a session MCP shipped by the plugin, not an HTTP client script. `.mcp.json` uses Epic's default binding, fixed:
 
 ```json
-{ "mcpServers": { "unreal-mcp": { "type": "http", "url": "${user_config.unreal_mcp_url}" } } }
+{ "mcpServers": { "unreal-mcp": { "type": "http", "url": "http://127.0.0.1:8000/mcp" } } }
 ```
 
-with `plugin.json` declaring `userConfig.unreal_mcp_url` (string, default `http://127.0.0.1:8000/mcp`, Epic's default). TheArchive runs on 8050, so the operator sets this once.
+No user-config substitution. The README documents the one editor setting that must match (Editor Preferences > General > Model Context Protocol > Server Port = 8000, Auto Start Server on) and how to change the port on both sides if 8000 is taken: edit the editor setting, then override the server in the project's own `.mcp.json` or with `claude mcp add --transport http unreal-mcp <url>`. A project-level override registers the server under a different tool-name prefix, so the README also says the agents' `tools:` grants must be updated to match in that case.
 
-Verification item (first implementation task): confirm user-config substitution applies to the `url` field. If it does not, ship a fixed `http://127.0.0.1:8000/mcp` and document the one editor setting (Editor Preferences > Model Context Protocol > Server Port = 8000).
-
-Tool names, as observed in this session for plugin MCPs: `mcp__plugin_<plugin>_<server>__<tool>` with hyphens preserved, so `mcp__plugin_wright_unreal-mcp__list_toolsets`, `..._describe_toolset`, `..._call_tool`. Confirm at the wiring smoke and pin the exact strings in every agent's `tools:` frontmatter.
+Tool names, as observed in this session for plugin MCPs: `mcp__plugin_<plugin>_<server>__<tool>` with hyphens preserved, so `mcp__plugin_wright_unreal-mcp__list_toolsets`, `..._describe_toolset`, `..._call_tool`. The exact strings are pinned into every agent's `tools:` frontmatter at the wiring smoke, derived from the tool catalog in section 10.
 
 ComfyUI is the existing `comfy-local-mcp` plugin. Agents that need it list its tools by full name, as the-archive does: `mcp__plugin_comfy-local-mcp_comfy-local__generate_image`, `..._get_result`, `..._recommend_workflow`, `..._list_workflows`, `..._health`. Wright ships no ComfyUI code.
 
@@ -180,7 +179,7 @@ The stance line changes in one place: "you never claim to have placed, wired, co
 
 1. Unit: `pytest scripts/tests/test_gates.py` covering the claim and verdict parsers, the grounding gate, and the tool-call gate. No editor.
 2. Wiring smoke: plugin loads from the marketplace; `/mcp` shows unreal-mcp connected at the configured URL; `list_toolsets` and `describe_toolset` answer; comfy-local `health` answers; agent tool names resolve.
-3. Design smoke: `/wright:run --stop-after synthesize` against TheArchive (`D:\UnrealProjects\TheArchive`, UE 5.8, MCP on 8050) with a pickup-to-turn-in bounty loop. Pass: no rejected symbol appears in the Synthesis; every INV is locked, forked, or OPEN; every CLM verdict cites a GPS or TOOL API line.
+3. Design smoke: `/wright:run --stop-after synthesize` against a fresh UE 5.8 project the operator creates for Wright (Blank template, `ModelContextProtocol` and `AllToolsets` enabled, MCP on the default port 8000) with a pickup-to-turn-in bounty loop. TheArchive (`D:\UnrealProjects\TheArchive`, MCP on 8050) stays the reference for the-archive's verified recipes but is not the smoke target. Pass: no rejected symbol appears in the Synthesis; every INV is locked, forked, or OPEN; every CLM verdict cites a GPS or TOOL API line.
 4. Full smoke: same task, all beats. Pass: placed content exists under `Wright/<slug>`; at least one ComfyUI texture reaches a material and survives read-back and capture; both gates PASS; the Validator issues a verdict; the NEEDS YOU list names the Blueprint logic with verifiable steps. The operator wires the Blueprint and playtests; the playtest is the terminal bar.
 
 ## 8. Deferred
@@ -189,7 +188,93 @@ Blender mesh-artist lane; the Dreamwave bridge (end goal: Wright, comfy-local-mc
 
 ## 9. Open items to resolve during implementation
 
-- Whether `${user_config.*}` substitutes into `.mcp.json` `url` (section 2.1).
-- Exact plugin MCP tool-name strings (section 2.1).
+Resolved in review: the port is fixed at Epic's default 8000 (section 2.1); tool-name strings are derived from the catalog in section 10 once the wiring smoke confirms the prefix.
+
+To resolve against the fresh UE 5.8 test project (the operator launches it; the survey in section 10.4 runs first):
+
 - Which Unreal toolsets expose asset discovery for `/Game` (section 3.2); if none, the GPS lists actors only and the profile says so.
-- Whether a viewport-capture mode exists that excludes gizmos by construction (the-archive gotcha).
+- Whether a viewport-capture mode exists that excludes gizmos by construction, and the exact name of the deselect-all tool (the-archive gotcha).
+- The exact getter names in `ActorTools` (label, class, folder) and the class-discovery tool in `ObjectTools`, which the-archive's inventory described but did not name.
+- Which gameplay-side toolsets under `AllToolsets` (GAS attribute sets, StateTree, others) are authorable through the MCP, because each one moves work from `[needs-you]` to `[editor]`.
+
+## 10. Tool catalog
+
+What each role may call, drawn from the-archive's verified inventory. Names marked `(confirm)` were described but not named in that inventory and are pinned by the survey in 10.4. Toolset names are given in their short form; the fully qualified names (`editor_toolset.toolsets.scene.SceneTools`, `EditorToolset.EditorAppToolset`) come from `list_toolsets` and are what `call_tool` takes.
+
+### 10.1 Unreal MCP meta-tools (every role)
+
+| Tool | Used for | Mode |
+| --- | --- | --- |
+| `list_toolsets` | Gate 0 liveness; discovering the toolset inventory | read |
+| `describe_toolset` | TOOL API block; mandatory before any call into a toolset | read |
+| `call_tool` | every toolset call below | read or write per tool |
+
+### 10.2 Unreal toolsets by role
+
+Conductor (Gate 0, Gate 1 GPS, TOOL API, post-build GPS re-snapshot). Read-only.
+
+| Toolset | Tools | Purpose |
+| --- | --- | --- |
+| `SceneTools` | `get_current_level`, `find_actors` | level name; every actor refPath |
+| `ActorTools` | label getter (confirm), class getter (confirm), folder getter (confirm), `get_actor_bounds`, `get_components` | per-actor GPS lines |
+| `ObjectTools` | `get_properties`, class discovery (confirm) | UClass properties on demand |
+| asset discovery (confirm) | listing under `/Game` | materials, textures, Blueprint classes in the GPS |
+
+Engine investigator. Read-only; verifies CLM claims.
+
+| Toolset | Tools | Purpose |
+| --- | --- | --- |
+| `SceneTools` | `get_current_level`, `find_actors` | confirm actors the design assumes |
+| `ActorTools` | getters as above, `get_components` | confirm class, components, transforms |
+| `ObjectTools` | `get_properties`, class discovery (confirm) | confirm a property or class exists |
+| `EditorAppToolset` | `GetVisibleActors` | what the vantage can see |
+
+Build executor, `[editor]` lane. Read and write; every mutating call is followed by a read-back and logged to the ledger.
+
+| Toolset | Tools | Purpose |
+| --- | --- | --- |
+| `SceneTools` | `add_to_scene_from_class`, `add_to_scene_from_asset`, `set_actor_folder`, `remove_from_scene` (own-run content only) | spawn hosts, lights, placed assets; outliner folder `Wright/<slug>` |
+| `PrimitiveTools` | `add_cube`, `add_cylinder`, `add_sphere`, `add_cone` | blockout geometry as components on a host actor |
+| `ActorTools` | `set_actor_transform` (param `xform`), label setter (confirm), parenting, `look_at`, `get_components`, `get_actor_bounds`, tags | placement and hierarchy |
+| `StaticMeshTools` | `set_material`, `import_file` (staged files only) | materials on meshes; existing-Content or staged mesh import |
+| `MaterialTools` | `create_material`, `add_expression`, `connect_to_output`, `get_expressions`, `recompile` | material graphs; `MP_` prefixed outputs |
+| `MaterialInstanceTools` | scalar, vector, texture, switch parameter setters | instance parameters, emissive intensity |
+| `TextureTools` | `import_file`, `get_size` | ComfyUI textures into `/Game/Wright/<slug>/` |
+| `ObjectTools` | `set_properties` (JSON string `values`), `get_properties` | any property without a dedicated tool; the mandatory read-back |
+| `EditorAppToolset` | `SetCameraTransform`, `GetCameraTransform`, `CaptureViewport`, `FocusOnActors`, deselect-all (confirm) | the self-verify loop |
+| `PhysicsToolsets`, `PCGToolset` | deferred | mass and scatter; not in v1 |
+
+Build executor, `[texture]` lane: the comfy-local tools in 10.3 plus `TextureTools`, `MaterialTools`, `ObjectTools`, and `EditorAppToolset` capture from the table above.
+
+Validator. Read plus capture; never writes.
+
+| Toolset | Tools | Purpose |
+| --- | --- | --- |
+| `SceneTools` | `get_current_level`, `find_actors` | what exists after the build |
+| `ActorTools` | getters, `get_components`, `get_actor_bounds` | placement and wiring checks |
+| `ObjectTools` | `get_properties` | materials assigned, properties set |
+| `EditorAppToolset` | `SetCameraTransform`, `CaptureViewport`, `GetVisibleActors` | look at the result from the player's vantage |
+| `EditorAppToolset` | `StartPIE`, `StopPIE` | candidate: play the loop; decided after the survey, not assumed |
+
+### 10.3 comfy-local tools
+
+| Tool | Role | Purpose |
+| --- | --- | --- |
+| `health` | conductor | Gate 0, non-blocking |
+| `recommend_workflow` | conductor (plates), executor (textures) | pick a workflow that fits the GPU and installed models |
+| `list_workflows` | executor | confirm the named texture and plate workflows exist |
+| `generate_image` | conductor (plates), executor (textures) | the generation call |
+| `get_result` | conductor, executor | fetch a finished asset |
+
+### 10.4 Survey against the fresh UE 5.8 project
+
+Runs once, before any agent file is written, against the operator's new project. Its output is `knowledge-base/03-tool-survey.md` and it pins every `(confirm)` above.
+
+1. `list_toolsets`: record the full inventory, including every gameplay-side toolset under `AllToolsets`.
+2. `describe_toolset` on each toolset in 10.2: record exact tool names, argument names, and enum values.
+3. Probe asset discovery: find any tool that lists assets under `/Game`; record it or record its absence.
+4. Probe capture: find a capture mode or a deselect-all tool that yields gizmo-free captures.
+5. Probe gameplay toolsets: for each (GAS attribute sets, StateTree, any Blueprint-adjacent toolset), record what it can create or edit, so the `[editor]` versus `[needs-you]` boundary in the profile is fact, not assumption.
+6. Confirm the plugin tool-name prefix by installing the plugin skeleton (`plugin.json` plus `.mcp.json` only) and reading `/mcp`.
+
+The engine profile's constraints, the executor's allowed calls, and every agent's `tools:` frontmatter are written from this survey.
