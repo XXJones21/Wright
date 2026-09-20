@@ -1,8 +1,10 @@
 # Wright, durable core (single source of truth)
 
 Wright is an internal, dev-time game-development reasoning core: a copilot for
-designing and building games, named for **Will Wright**. It is engine-agnostic.
-Kingmaker (a UEFN/Verse island) is only its first validation vertical.
+designing and building games, named for **Will Wright**. It is engine-agnostic
+in method; its live engine is Unreal Engine 5.8, and the Retrieval project's
+Mission 1 slice is its first validation vertical (Kingmaker, a UEFN/Verse
+island, was the prior vertical in the Valar era and is archived).
 
 ## Architecture
 
