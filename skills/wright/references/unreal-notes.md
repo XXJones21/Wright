@@ -9,6 +9,7 @@ Epic's `unreal-mcp` skill (plugin `unreal-engine-skills-for-claude-code`) owns d
 - `ObjectTools.set_properties` `values` is a JSON string. Material refPaths inside it use `Package.Object` form. Read back with `get_properties`; if `overrideMaterials` came back empty, rebuild the actor.
 - Primitives attach as secondary components: iterate every StaticMeshComponent from `get_components`.
 - `connect_to_output` needs `MP_`-prefixed properties. Rotation needs pitch, yaw, and roll together. Units cm, Z up.
+- `GameplayTagsToolset.AddTag`'s docstring requires explicit operator permission before it is called; prefer `ActorTools.add_tag` for run-scoped tagging, and put any gameplay-tag creation in a Needs You spec.
 
 ## Captures
 - `SelectActors([])` before every capture. `captureTransform: null` captures the current viewport; pass the `GetCameraTransform` result to be explicit. Editor sprites and the axis widget remain; ignore them when reviewing. Decode `returnValue.image.data` (base64 PNG) to `<run_dir>/captures/` and Read it.
@@ -18,6 +19,9 @@ Epic's `unreal-mcp` skill (plugin `unreal-engine-skills-for-claude-code`) owns d
 - `get_graph_dsl_docs` and `find_node_types` before writing DSL; node type ids are `Category|Title`; quote class paths, enums, and asset refs.
 - `write_graph_dsl` compiles; read the result text for warnings. Compile with `warnings_as_errors: true` once per logical unit, then `read_graph_dsl` and compare to intent.
 - Structural changes need a compile before they exist on the CDO.
+
+## Sandbox
+- `execute_tool_script` results are `_StrictDict`: `.get()` with a default raises `_StrictDict.get() does not support a default value`; index with `["returnValue"]` and check `in` first.
 
 ## Ledger
 Every mutating and read call an executor makes goes into its artifact's `CALL LEDGER` fence, one json object per line, so the tool-call gate can check it:

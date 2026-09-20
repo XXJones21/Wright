@@ -41,6 +41,12 @@ Every entry below is a footgun from `profiles/ue5.config.json`, in the order the
 - `BlueprintTools.write_graph_dsl` compiles the Blueprint; a compile warning or error comes back in the result text, not as an exception. Class paths, enum values, and asset refs inside DSL must be quoted strings.
   Fix: `write_graph_dsl` compiles; read the result text for warnings. Compile with `warnings_as_errors: true` once per logical unit, then `read_graph_dsl` and compare to intent.
 
+- `ProgrammaticToolset.execute_tool_script` returns a `_StrictDict`, not a plain dict: calling `.get(key, default)` on it raises `_StrictDict.get() does not support a default value`, so a defensive read written the ordinary way crashes the script.
+  Fix: index the result with `["returnValue"]` and test membership with `in` first; never pass a default to `.get()`.
+
+- `GameplayTagsToolset.AddTag` writes to the project tag ini and its own docstring says it should only be called after explicit operator direction, so an agent that creates a gameplay tag unprompted has overstepped.
+  Fix: prefer `ActorTools.add_tag` for run-scoped tagging, which is per-actor and add-only; put any gameplay-tag creation in a Needs You spec for the operator.
+
 ## Claude Code harness
 
 - Agent `tools:` frontmatter is advisory for Wright's subagents in the sessions tested (2026-09-20, Retrieval): a subagent declared without Edit could still call Edit on a scratch file. The read-only boundary for the engine investigator and the validator is therefore their instructions (no mutating `call_tool`, no `execute_tool_script`, no edits to the plan or the project) and the CALL LEDGER the executor writes, not the grant list.

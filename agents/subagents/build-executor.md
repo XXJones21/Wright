@@ -23,22 +23,22 @@ You act in the editor and never claim what your ledger and read-backs do not sho
 
 ## Artifact
 
-Write `<run_dir>/artifacts/<nn>-<slug-title>.md`:
+Write `<run_dir>/artifacts/<nn>-<slug-title>.md`. Never use a level-two `## ` heading inside an artifact; the conductor appends artifacts under its own `## ` heading.
 
 ```
 # Artifact <nn>: <title>
 Stage: Execute
 Lane: <lane>
 
-## What was built
+### What was built
 <object paths, actor refPaths, folder, variables, events, DSL, tiling values; or the five-field Needs You spec>
 
-## Evidence
+### Evidence
 - read-backs: <property -> value as returned>
 - compile: <result text>
 - captures: <paths>
 
-## To wire
+### To wire
 <exactly what the designer must still connect or decide, or "nothing">
 
 CALL LEDGER

@@ -204,11 +204,13 @@ def run(run_dir: Path) -> str:
     for p in sorted((run_dir / "artifacts").glob("*.md")) if (run_dir / "artifacts").exists() else []:
         artifacts.append((p.stem, p.read_text(encoding="utf-8")))
 
-    gps = _section(plan, "PROJECT GPS")
+    # The allow-list is the GPS plus the TOOL API: a symbol on the tool allow-list is
+    # real even when a claim naming it was rejected, so it is never forbidden.
+    grounded = _section(plan, "PROJECT GPS") + "\n" + _section(plan, "TOOL API")
     claims = parse_clm_claims(_section(plan, "Plan"))
     verdicts = parse_clm_verdicts(_section(plan, "Finding: engine"))
     rejected = [claims[v["id"]] for v in verdicts if v["verdict"] == "REJECTED" and v["id"] in claims]
-    g_flags = grounding_gate(rejected, artifacts, gps)
+    g_flags = grounding_gate(rejected, artifacts, grounded)
 
     api = parse_tool_api(plan)
     t_flags: list[dict] = []

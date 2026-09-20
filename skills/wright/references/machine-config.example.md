@@ -9,7 +9,7 @@ The conductor (`skills/wright/SKILL.md`, Step 0.5) reads this file before dispat
 | `TEXTURE_STAGING_DIR` | Where ComfyUI textures and their seamless/normal derivatives land before `TextureTools.import_file`. | `<UE_PROJECT_ROOT>\wright\textures` |
 | `COMFY_TEXTURE_WORKFLOW` | comfy-local workflow name for seamless texture tiles. Confirm with `list_workflows`. | `scene_image_flux` |
 | `COMFY_PLATE_WORKFLOW` | comfy-local workflow name for concept plates. | `scene_image_flux` |
-| `GPS_MAX_CHARS` | Character cap for the PROJECT GPS section; truncation is announced, never silent. | `12000` |
+| `GPS_MAX_CHARS` | Character cap for the PROJECT GPS section; truncation is announced, never silent. | `24000` |
 | `DESIGN_DOCS` | Comma-separated paths handed to the reference investigator (game design document, slice brief). | `<UE_PROJECT_ROOT>\Documentation\GDD_Retrieval.md` |
 
 ## How this gets used

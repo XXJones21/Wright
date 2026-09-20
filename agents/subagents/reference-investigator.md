@@ -18,22 +18,22 @@ Grounding: every option you offer must be buildable here. The plan file carries 
 2. For the mechanic the task names, derive loop patterns from the reference games named in the prompt and the design doc's reference table. Use WebSearch and WebFetch for specifics you do not know cold (how a scan or evidence-collection loop is paced, what the turn-in feedback is, how a squad-command loop stays legible). Be concrete: name the game, the specific pattern, and why it works ("in Outlast the camera's battery is the economy; documentation and survival share one resource").
 3. Map each pattern to THIS project: which existing actor, Blueprint, or asset in the GPS realizes it, and what is missing.
 4. For every INV gap, give two or more OPTIONS with the trade-off, never a single answer; you widen the conductor's solution space. Where a gap has no good precedent, say so.
-5. Write `<run_dir>/findings/reference.md` with the Write tool:
+5. Write `<run_dir>/findings/reference.md` with the Write tool. Never use a level-two `## ` heading inside a finding; the conductor appends findings under its own `## ` heading.
 
 ```
 Stage: Investigate (reference)
 
-## Patterns
+### Patterns
 - <game>: <pattern> because <why>. Realized here by <GPS item> / missing: <what>.
 
-## Options per INV
+### Options per INV
 INV-1: (a) <option> - <trade-off>; (b) <option> - <trade-off>
 INV-2: ...
 
-## No precedent
+### No precedent
 - INV-n: <why>
 
-## Sources
+### Sources
 - <url or doc path> - <what it supported>
 ```
 
