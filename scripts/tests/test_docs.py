@@ -77,3 +77,13 @@ def test_agent_frontmatter():
 def test_all_four_agents_present():
     for f in AGENTS:
         assert (ROOT / "agents" / "subagents" / f"{f}.md").exists(), f
+
+def test_skill_structure():
+    t = (ROOT / "skills/wright/SKILL.md").read_text(encoding="utf-8")
+    assert t.startswith("---\nname: wright\n")
+    for h in ("Gate 0", "Step 0.5", "Gate 1", "Beat 1", "Beat 2", "Beat 3", "Beat 4", "Gates", "Beat 5", "Close"):
+        assert h in t, h
+    for s in ("mcp__unreal-mcp__list_toolsets", "scripts/gates.py", "wright:subagents:wright-engine-investigator",
+              "wright:subagents:wright-reference-investigator", "wright:subagents:wright-build-executor",
+              "wright:subagents:wright-validator", "ONE AT A TIME", "AgentSkillToolset"):
+        assert s in t, s
