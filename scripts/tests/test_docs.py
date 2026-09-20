@@ -1,7 +1,7 @@
 import pathlib, re
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 REFS = ROOT / "skills/wright/references"
-DOCS = list(REFS.glob("*.md")) + list((ROOT / "agents").rglob("*.md")) + list((ROOT / "skills").rglob("SKILL.md")) + [ROOT / "README.md"]
+DOCS = list(REFS.glob("*.md")) + list((ROOT / "agents").rglob("*.md")) + list((ROOT / "skills").rglob("SKILL.md")) + [ROOT / "README.md"] + list((ROOT / "knowledge-base").glob("*.md"))
 
 DASH_RE = re.compile("[\u2014\u2013]")
 EMOJI_RE = re.compile(r"[\U0001F300-\U0001FAFF\u2190-\u27BF\u2B00-\u2BFF]")
