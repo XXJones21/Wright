@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+skills/wright/references/machine-config.md
+.superpowers/
