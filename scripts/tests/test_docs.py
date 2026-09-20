@@ -22,19 +22,19 @@ def test_plan_template_headings_in_order():
     idx = [t.index(h) for h in live_order]
     assert idx == sorted(idx)
 
-    appended_headings = ["## Plan (orchestrator)", "## Finding: engine", "## Finding: reference",
-                          "## Synthesis (design)", "## Artifact <n>: <title>", "## Gate",
-                          "## PROJECT GPS (post-build)", "## Validation", "## Close"]
+    appended_names = ["Plan (orchestrator)", "Finding: engine", "Finding: reference",
+                       "Synthesis (design)", "Artifact <n>: <title>", "Gate",
+                       "PROJECT GPS (post-build)", "Validation", "Close"]
+
+    for line in t.splitlines():
+        for name in appended_names:
+            assert not line.startswith(f"## {name}"), line
 
     m = re.search(r"```text\n(.*?)\n```", t, re.DOTALL)
     assert m, "missing the append-order fenced block"
     block = m.group(1)
-    outside = t[:m.start()] + t[m.end():]
 
-    for h in appended_headings:
-        assert h not in outside.splitlines(), h
-
-    positions = [block.index(h) for h in appended_headings]
+    positions = [block.index(name) for name in appended_names]
     assert positions == sorted(positions)
 
 def test_core_identity_carries_the_four_lenses():
