@@ -1,7 +1,7 @@
 # Wright standalone plugin: design spec
 
-Date: 2026-09-19 (revised 2026-09-20 after the tool survey)
-Status: approved in brainstorm; revised; awaiting written-spec review
+Date: 2026-09-19 (revised 2026-09-20 after the static and live tool survey)
+Status: approved in brainstorm; revised; live survey complete except the tool-name prefix; awaiting written-spec review
 Scope: port Wright from the Valar/Hearth harness into a standalone Claude Code plugin, retargeted from UEFN/Verse to Unreal Engine 5.8 through Epic's official Unreal MCP, layered on Epic's `unreal-engine-skills-for-claude-code` plugin, with ComfyUI (comfy-local-mcp) as the texture and concept-plate lane.
 
 ## 1. Context and decisions
@@ -37,8 +37,10 @@ wright/
     reference-investigator-prompt.md
     build-executor-prompt.md
     validator-prompt.md
-    unreal-notes.md                 the-archive's verified gotchas that Epic's skill does not cover (JSON-string values, MP_ prefix, read-back, selection in captures, actor-count scaling)
+    unreal-notes.md                 verified gotchas Epic's skill does not cover (all keys required, package vs object paths, JSON-string values, MP_ prefix, read-back, sprites in captures, actor-count scaling)
     blueprint-lane-playbook.md      the DSL discipline: docs, node lookup, write, compile, read back
+    blueprint-dsl-docs.txt          verbatim output of BlueprintTools.get_graph_dsl_docs (from the survey)
+    programmatic-exec-env.txt       verbatim output of ProgrammaticToolset.get_execution_environment (from the survey)
     comfy-texture-playbook.md       the texture-set recipe end to end
     machine-config.example.md       per-machine fields (below)
   profiles/ue5.config.json          engine grounding profile
@@ -79,7 +81,7 @@ Four inputs, written into the plan once at Gate 1.
 Same schema as the UEFN profile: `engine`, `status`, `reference_corpus` (kind, rule), `execution_lane`, `constraints`, `footguns`, `pattern_table`. Content comes from the tool survey (`knowledge-base/03-tool-survey.md`) and the-archive's verified playbook.
 
 - Constraints: primitives limited to cube, cylinder, sphere, cone; no level-creation tool (`load_level` opens existing levels only); no Fab or Bridge download automation; tool calls execute serially on the game thread; per-call latency grows with actor count (keep hero actors in the tens, represent mass as mesh plus texture); `execute_tool_script` is privileged and read-only for Wright.
-- Footguns: `values` in `ObjectTools.set_properties` is a JSON string; material property enums need the `MP_` prefix; an `xform` with `rotation` must give pitch, yaw, and roll; `overrideMaterials` can silently no-op (read back, rebuild the actor if it does not persist); `add_*` primitives attach as secondary components (iterate all StaticMeshComponents); selection gizmo and wireframe leak into captures (`SelectActors([])` first); `find_actors` returns only refPaths; competing directional lights; Blueprint structural changes need `compile_blueprint` before they exist on the CDO; pure-node outputs are recomputed per wire; casting to a Blueprint creates a hard load dependency.
+- Footguns (all confirmed live on Retrieval unless marked the-archive): every parameter key must be present in a call, optional ones as explicit `null` or `""`, or the call is rejected; `find_assets` returns package paths while Blueprint and asset tools want object paths (`/Game/X/BP_Y.BP_Y`); every object reference is `{"refPath": ...}` in and out; a parameter or schema error returns as a plain string starting with `Function "` or `Parameter error:`, not an MCP error, so results must be string-checked; editor sprites (lights, player start, cameras) and the axis widget survive `bShowUI: false` in captures, reviewers ignore them; `values` in `ObjectTools.set_properties` is a JSON string (the-archive); material property enums need the `MP_` prefix (the-archive); an `xform` with `rotation` must give pitch, yaw, and roll (the-archive); `overrideMaterials` can silently no-op, so read back and rebuild the actor if it does not persist (the-archive); `add_*` primitives attach as secondary components, iterate all StaticMeshComponents (the-archive); `find_actors` returns only refPaths; competing directional lights (the-archive); Blueprint structural changes need `compile_blueprint` before they exist on the CDO; pure-node outputs are recomputed per wire; casting to a Blueprint creates a hard load dependency.
 - Pattern table: spawn actor plus primitive; texture import plus material graph plus assign plus read-back; camera plus capture; property set plus read-back; Blueprint create plus variables plus DSL plus compile plus `read_graph_dsl`; data table create plus rows; batch identification by UAID; outliner folders.
 - Execution lane: the MCP acts through Wright for level content, materials, textures, Blueprints, data tables, and gameplay tags. C++ edits, new plugins, external asset packs, and anything a toolset does not expose are Needs You.
 - Allow-list rule: a tool, argument, enum value, node type id, or UClass property not present in the TOOL API block, `find_node_types`, or `ObjectTools` discovery does not exist.
@@ -199,9 +201,9 @@ Blender mesh-artist lane; the Dreamwave bridge (end goal: Wright, comfy-local-mc
 
 ## 9. Open items
 
-Resolved by the static survey (`knowledge-base/03-tool-survey.md`): asset discovery (`AssetTools.find_assets`); ActorTools getter names; class discovery (`ObjectTools.search_subclasses`, `list_properties`); deselect (`SelectActors([])`); the gameplay authoring boundary (Blueprints, data tables, tags, materials, widgets are authorable; C++ and level creation are not).
+Resolved by the static and live survey (`knowledge-base/03-tool-survey.md`): asset discovery (`AssetTools.find_assets`); ActorTools getter names; class discovery (`ObjectTools.search_subclasses`, `list_properties`); deselect (`SelectActors([])`); the gameplay authoring boundary (Blueprints, data tables, tags, materials, widgets are authorable; C++ and level creation are not); fully qualified toolset names; schemas match the static inventory for all 17 catalog toolsets; DSL docs and execution-environment text saved to `references/`; `CaptureViewport` works with `captureTransform: null` after `SelectActors([])`; `read_graph_dsl` on the FPS character Blueprint reads back cleanly; 20 project Agent Skills are listed, including Epic's four EditorToolset skills and PCG's `Skill_InstantLevelOperations`.
 
-To confirm live once `AllToolsets` is enabled in Retrieval (section 10.4): fully qualified toolset names; schema match against the static inventory; the full DSL docs and execution-environment text; `CaptureViewport` default behavior; the `mcp__unreal-mcp__*` prefix.
+Still open: the `mcp__unreal-mcp__*` prefix and coexistence with Epic's plugin, confirmed at the wiring smoke from a session launched in `D:\UnrealProjects\Retrieval`. PIE for the Validator stays off in v1.
 
 ## 10. Tool catalog
 
@@ -249,7 +251,9 @@ Build executor, `[blueprint]` lane: the `[editor]` set plus
 
 Build executor, `[texture]` lane: the comfy-local tools in 10.3 plus `TextureTools.import_file`, `get_size`; `MaterialTools.create_material`, `list_expression_classes`, `add_expression`, `get_expression_input_names`, `get_expression_output_names`, `connect_expressions`, `connect_to_output`, `get_expressions`, `recompile`; `MaterialInstanceTools.create`, `list_parameters`, `set_texture_parameter`, `set_scalar_parameter`; `ObjectTools.set_properties`, `get_properties`; `AssetTools.save_assets`; `EditorAppToolset` capture.
 
-Validator. Read plus capture; never writes: the conductor's set, `BlueprintTools.read_graph_dsl`, `compile_blueprint` (verification only), `EditorAppToolset.SelectActors`, `SetCameraTransform`, `CaptureViewport`, `GetVisibleActors`, `IsPIERunning`.
+Validator. Read plus capture; never writes: the conductor's set, `BlueprintTools.read_graph_dsl`, `compile_blueprint` (verification only), `EditorAppToolset.SelectActors`, `SetCameraTransform`, `CaptureViewport`, `GetVisibleActors`, `IsPIERunning`, `LogsToolset.GetLogEntries` (compile and MCP errors).
+
+Build executors in every lane may also call `LogsToolset.GetLogEntries(category, pattern, maxEntries)` to read the error behind a failed call.
 
 ### 10.3 comfy-local tools
 
@@ -263,11 +267,11 @@ Validator. Read plus capture; never writes: the conductor's set, `BlueprintTools
 
 ### 10.4 Live survey against Retrieval
 
-Runs once `AllToolsets` is enabled and the editor restarted, before any agent file is written. Output is appended to `knowledge-base/03-tool-survey.md`.
+Ran 2026-09-20 with `AllToolsets` enabled; results are in `knowledge-base/03-tool-survey.md` under "Live confirmation", raw schemas in `knowledge-base/survey-raw/`.
 
-1. `list_toolsets`: record the fully qualified names.
-2. `describe_toolset` on every toolset in 10.2: diff against the static inventory.
-3. `BlueprintTools.get_graph_dsl_docs` and `ProgrammaticToolset.get_execution_environment`: save the full texts into `references/`.
-4. `CaptureViewport` with no transform and `SelectActors([])`: confirm a clean capture.
-5. Decide PIE use for the Validator.
-6. From a Claude Code session launched in `D:\UnrealProjects\Retrieval`: confirm the `mcp__unreal-mcp__*` prefix and that Epic's plugin skills and hook load alongside Wright.
+1. `list_toolsets`: done, fully qualified names recorded.
+2. `describe_toolset` on every toolset in 10.2: done, all match the static inventory.
+3. DSL docs and execution environment: saved to `references/`.
+4. Capture after `SelectActors([])`: done, clean apart from editor sprites.
+5. PIE for the Validator: off in v1.
+6. Tool-name prefix and coexistence with Epic's plugin: pending, part of the wiring smoke (section 7.2).

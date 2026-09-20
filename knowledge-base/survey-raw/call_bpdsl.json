@@ -1,0 +1,3 @@
+{
+ "returnValue": "(event Touch|EventPrimaryThumbstick (Axis_X Axis_Y)\n  (Input|DoMove Axis_X Axis_Y))\n\n(event Touch|EventSecondaryThumbstick (Axis_X Axis_Y)\n  (Input|DoAim Axis_X Axis_Y))\n\n(event Touch|EventTouchJumpStart\n  (Input|DoJumpStart))\n\n(event Touch|EventTouchJumpEnd\n  (Input|DoJumpEnd))\n"
+}

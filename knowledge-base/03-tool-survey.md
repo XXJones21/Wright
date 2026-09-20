@@ -1,6 +1,6 @@
 # 3. Tool survey (UE 5.8 Unreal MCP)
 
-Status: static inventory complete from engine plugin source (2026-09-20); live confirmation pending `AllToolsets` being enabled in the Retrieval project. Live inventory at the time of the survey exposed only `ToolsetRegistry.AgentSkillToolset`, `PCGToolset.PCGToolset`, and `PCGToolset.PCGSpatialToolset`.
+Status: static inventory from engine plugin source, then confirmed live against Retrieval with `AllToolsets` enabled (2026-09-20; see "Live confirmation" at the end). Before `AllToolsets` was enabled the server exposed only `ToolsetRegistry.AgentSkillToolset`, `PCGToolset.PCGToolset`, and `PCGToolset.PCGSpatialToolset`.
 
 Engine: `D:\Unreal Engine\UE_5.8`. Toolset plugins live under `Engine/Plugins/Experimental/Toolsets/`. Python toolsets are under each plugin's `Content/Python/<pkg>/toolsets/*.py`; C++ toolsets expose `UFUNCTION(meta = (AICallable))` statics.
 
@@ -99,3 +99,28 @@ Resolves the "deselect-all" open item: `SelectActors([])`. Gizmo-free capture mo
 4. `get_execution_environment()` text, saved for the GPS batch script.
 5. Whether `CaptureViewport` with no `CaptureTransform` captures the current viewport, and whether `SelectActors([])` clears the selection outline.
 6. The tool-name prefix Claude Code assigns when the server comes from the project `.mcp.json` (expected `mcp__unreal-mcp__<tool>`).
+
+## Live confirmation (2026-09-20, Retrieval with AllToolsets enabled)
+
+Status: complete except the Claude Code tool-name prefix (needs a session launched from the project root).
+
+- `list_toolsets` returns about 50 toolsets. Fully qualified names as `call_tool` takes them: `editor_toolset.toolsets.<module>.<Class>` for the Python EditorToolset (for example `editor_toolset.toolsets.scene.SceneTools`), `EditorToolset.EditorAppToolset` and `EditorToolset.LogsToolset` for the C++ ones, `ToolsetRegistry.AgentSkillToolset`, `GameplayTagsToolset.GameplayTagsToolset`, `state_tree_toolset.toolsets.state_tree.StateTreeTools`. Raw schemas are in `survey-raw/describe_*.json`.
+- `describe_toolset` schemas match the static inventory exactly for all 17 catalog toolsets (tool names and argument keys).
+- Two toolsets the static pass missed: `EditorToolset.LogsToolset` (`GetLogCategories(filter)`, `GetLogEntries(category, pattern, maxEntries)`, `Get/SetVerbosity`), which lets an agent read compile errors and MCP log lines; and the animation set (`SequencerTools`, `SequencerKeyframingTools`, `ControlRigTools`, and four more), deferred.
+- Project Agent Skills (`AgentSkillToolset.ListSkills`) returned 20 skills: Epic's four EditorToolset skills, eight Niagara skills, seven PCG skills (including `Skill_InstantLevelOperations` for batch actor placement and transforms), and one Dataflow skill. Full list in `survey-raw/call_skills.json`.
+- `get_graph_dsl_docs` and `get_execution_environment` texts saved to `skills/wright/references/blueprint-dsl-docs.txt` and `programmatic-exec-env.txt`. The sandbox exposes `execute_tool(tool_name, json_input)` with the fully qualified tool name, requires a `run()` returning a dict, and allows only `json`, `math`, `datetime`, `copy`, `re`, `time`.
+- GPS probe on `/Game/FirstPerson/Lvl_FirstPerson`: 70 actors, 49 visible from the current camera, one outliner folder, 11 top-level `/Game` folders, 44 Blueprints. `BP_FirstPersonCharacter` reads back cleanly: parent `/Script/Retrieval.RetrievalCharacter`, 38 overridable events, and an EventGraph whose `read_graph_dsl` is four touch-input events.
+- Capture: `SelectActors([])` then `CaptureViewport({captureTransform: null, annotations: {all zeros}, bShowUI: false})` returns a PNG of the current viewport. Passing the `GetCameraTransform` result as `captureTransform` also works. Test image: `survey-raw/capture_lvl_firstperson.png`.
+
+### Footguns confirmed live (go into `profiles/ue5.config.json`)
+
+1. **Every parameter key must be present in the call**, including optional ones. `find_actors({})` and `find_actors({"name": ""})` are rejected with "input param ... is required"; the working call is `{"root": null, "name": "", "actor_type": null, "tag": "", "bounds": null, "collision_channels": null}`. Same for `find_assets` (`tags: null`, `name: ""`), `get_components` (`component_type: null`), `list_variables` (`graph: null`), and `CaptureViewport` (`captureTransform: null`). Rule: build every argument object from the describe schema with explicit nulls.
+2. **`find_assets` returns package paths, Blueprint tools need object paths.** `find_assets` gives `/Game/FirstPerson/Blueprints/BP_FirstPersonCharacter`; `list_variables` rejects that. Pass `{"refPath": "/Game/.../BP_X.BP_X"}` (package path plus `.` plus asset name).
+3. **Editor sprites survive `bShowUI: false`.** The capture shows light, player-start, and camera billboards plus the corner axis widget. No selection gizmo appeared after `SelectActors([])`. Reviewers must ignore billboards; there is no game-view capture mode.
+4. Object references are `{"refPath": "..."}` everywhere, in and out. Actor refPaths look like `/Game/<Level>.<Level>:PersistentLevel.<ActorName>`; graph refPaths like `/Game/.../BP_X.BP_X:EventGraph`.
+5. Tools return `{"returnValue": ...}`; a parameter or schema error comes back as a plain string starting with `Function "` or `Parameter error:` rather than an MCP error, so executors must string-check results.
+
+### Remaining
+
+- The `mcp__unreal-mcp__*` prefix and coexistence with Epic's plugin: confirm from a Claude Code session launched in `D:\UnrealProjects\Retrieval` (wiring smoke, spec section 7.2).
+- PIE for the Validator: `StartPIE`, `StopPIE`, `IsPIERunning` exist; not exercised. Default stays off in v1.
