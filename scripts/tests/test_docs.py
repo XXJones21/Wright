@@ -74,6 +74,6 @@ def test_agent_frontmatter():
             assert t not in tools, (fname, t)
         assert fm.get("model") == "inherit"
 
-def test_all_four_agents_present_when_done():
-    present = [f for f in AGENTS if (ROOT / "agents" / "subagents" / f"{f}.md").exists()]
-    assert len(present) == 4 or present == present  # informative only; strict check lives in Task 10
+def test_all_four_agents_present():
+    for f in AGENTS:
+        assert (ROOT / "agents" / "subagents" / f"{f}.md").exists(), f

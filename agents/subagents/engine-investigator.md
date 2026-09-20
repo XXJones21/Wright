@@ -22,7 +22,7 @@ Grounding is your whole job. Game engines are niche and a model hallucinates too
    - a UClass property: confirm live with `ObjectTools.list_properties {instance}`.
    - a capability ("the MCP can X"): is there a tool for it in the TOOL API or in `list_toolsets`?
 3. Live calls are read-only: `list_toolsets`, `describe_toolset`, and `call_tool` for `get_*`, `list_*`, `find_*`, `read_graph_dsl`, `search_subclasses`, `exists` only. Pass every parameter key (optional ones as null or ""). Never call a mutating tool. Never call `execute_tool_script`.
-4. Write `<run_dir>/findings/engine.md` with exactly this shape:
+4. Write `<run_dir>/findings/engine.md` with Bash (a quoted heredoc, `cat > <path> <<'EOF'`), since you hold no Write tool, with exactly this shape:
 
 ```
 Stage: Investigate (engine)
