@@ -1,7 +1,7 @@
 {
   "name": "wright",
   "description": "Game-development reasoning core for Unreal Engine 5.8. A five-beat orchestrator (Plan, Investigate, Synthesize, Execute, Validate) that grounds every claim against the live editor through Epic's Unreal MCP, builds level content, materials, and Blueprints in the editor, generates textures and concept plates with ComfyUI, and hands what it cannot build to the designer as a Needs You list. Layers on Epic's unreal-engine-skills-for-claude-code plugin.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": { "name": "Joshua Jones" },
   "license": "MIT",
   "keywords": ["claude-code", "unreal-engine", "game-design", "mcp", "comfyui"]
