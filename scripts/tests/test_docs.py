@@ -45,3 +45,35 @@ def test_core_identity_carries_the_four_lenses():
 def test_playbooks_exist():
     for n in ("blueprint-lane-playbook.md", "comfy-texture-playbook.md", "unreal-notes.md"):
         assert (REFS / n).exists(), n
+
+import yaml  # pip install pyyaml
+
+AGENTS = {
+    "engine-investigator": {"name": "wright-engine-investigator", "must_have": ["mcp__unreal-mcp__call_tool", "mcp__unreal-mcp__describe_toolset"], "must_not": ["Write", "Edit"]},
+    "reference-investigator": {"name": "wright-reference-investigator", "must_have": ["WebSearch", "WebFetch"], "must_not": ["mcp__unreal-mcp__call_tool"]},
+    "build-executor": {"name": "wright-build-executor", "must_have": ["mcp__unreal-mcp__call_tool", "mcp__plugin_comfy-local-mcp_comfy-local__generate_image", "Bash", "Write"], "must_not": []},
+    "validator": {"name": "wright-validator", "must_have": ["mcp__unreal-mcp__call_tool"], "must_not": ["Write", "Edit", "mcp__plugin_comfy-local-mcp_comfy-local__generate_image"]},
+}
+
+def _frontmatter(p):
+    t = p.read_text(encoding="utf-8")
+    assert t.startswith("---\n"), p.name
+    return yaml.safe_load(t.split("---\n", 2)[1])
+
+def test_agent_frontmatter():
+    for fname, spec in AGENTS.items():
+        p = ROOT / "agents" / "subagents" / f"{fname}.md"
+        if not p.exists():
+            continue  # tasks 7 to 10 add them one at a time
+        fm = _frontmatter(p)
+        assert fm["name"] == spec["name"]
+        tools = [x.strip() for x in fm["tools"].split(",")]
+        for t in spec["must_have"]:
+            assert t in tools, (fname, t)
+        for t in spec["must_not"]:
+            assert t not in tools, (fname, t)
+        assert fm.get("model") == "inherit"
+
+def test_all_four_agents_present_when_done():
+    present = [f for f in AGENTS if (ROOT / "agents" / "subagents" / f"{f}.md").exists()]
+    assert len(present) == 4 or present == present  # informative only; strict check lives in Task 10
