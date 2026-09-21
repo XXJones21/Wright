@@ -1,0 +1,24 @@
+{
+  "name": "wright",
+  "version": "0.2.0-alpha.3+codex.20260920214813",
+  "description": "A gameplay harness for game-wide sandbox pre-production, mission-focused production and playable human reviews.",
+  "author": {
+    "name": "Joshua Jones"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Wright",
+    "shortDescription": "Prototype the game, then build the selected mission.",
+    "longDescription": "Wright maps the whole game into playable rooms in one prototype sandbox, with contextual debug UI, equipment stand-ins and mission concept coverage. Production focuses on the selected mission. Bounded packets preserve evidence, scope and human-reviewed phase handoffs. Local Codex preview; no comparative performance claim.",
+    "developerName": "Joshua Jones",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use Wright to plan the whole game's mechanics and concepts, then prototype them in rooms of one sandbox level with debug UI.",
+      "Resume a Wright packet and reconcile its saved progress."
+    ]
+  }
+}

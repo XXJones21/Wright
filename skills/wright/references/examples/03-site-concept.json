@@ -1,0 +1,14 @@
+{
+  "id": "site-concept",
+  "phase": "pre-production",
+  "role": "environment-artist",
+  "lane": "concept",
+  "kind": "change",
+  "outcome": "A saved annotated crash-site layout proposal and mood view give the user a concrete visual direction to review alongside the playable blockout.",
+  "depends_on": [],
+  "allowed_changes": ["concepts/site-concept/"],
+  "checks": [
+    {"id": "concept-brief", "description": "Saved concepts and accompanying notes identify scale, landmarks, evidence sightlines, palette and assumptions; illustrative proposals are distinguished from implemented level state.", "kind": "static"}
+  ],
+  "budget": {"tool_calls": 12, "minutes": 8}
+}

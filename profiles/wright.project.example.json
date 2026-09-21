@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "run_root": "wright/runs",
+  "texture_staging": "wright/textures"
+}
