@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wright"
+  short_description: "Prototype game-wide mechanics, then produce a mission"
+  default_prompt: "Use $wright to map the game's mechanics and mission concepts, then build bounded playable test rooms with contextual debug UI in one prototype sandbox."

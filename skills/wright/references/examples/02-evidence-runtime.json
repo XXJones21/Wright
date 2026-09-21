@@ -1,0 +1,14 @@
+{
+  "id": "evidence-runtime",
+  "phase": "pre-production",
+  "role": "reviewer",
+  "lane": "editor",
+  "kind": "probe",
+  "outcome": "An actual test confirms that logging one evidence item twice produces exactly one progress increment.",
+  "depends_on": ["evidence-state"],
+  "allowed_changes": [],
+  "checks": [
+    {"id": "log-once", "description": "Observe the counter before interaction, after the first interaction, and after repeating it; the deltas are one and zero.", "kind": "runtime"}
+  ],
+  "budget": {"tool_calls": 12, "minutes": 5}
+}

@@ -1,0 +1,15 @@
+{
+  "id": "evidence-state",
+  "phase": "pre-production",
+  "role": "gameplay-programmer",
+  "lane": "editor",
+  "kind": "change",
+  "outcome": "One owned evidence Blueprint has a logged-state transition that cannot increment twice; the asset is saved.",
+  "depends_on": [],
+  "allowed_changes": ["One run-owned evidence Blueprint in the contracted test level; resolve its exact object path before starting."],
+  "checks": [
+    {"id": "state-readback", "description": "Graph read-back shows the unlogged-to-logged transition and repeat guard.", "kind": "static"},
+    {"id": "compile", "description": "The changed Blueprint compiles without warnings or errors.", "kind": "static"}
+  ],
+  "budget": {"tool_calls": 30, "minutes": 10}
+}

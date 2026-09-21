@@ -3,3 +3,6 @@ __pycache__/
 .pytest_cache/
 skills/wright/references/machine-config.md
 .superpowers/
+.test-deps/
+.test-tmp/
+.venv/

@@ -80,10 +80,10 @@ def test_all_four_agents_present():
 
 def test_skill_structure():
     t = (ROOT / "skills/wright/SKILL.md").read_text(encoding="utf-8")
-    assert t.startswith("---\nname: wright\n")
-    for h in ("Gate 0", "Step 0.5", "Gate 1", "Beat 1", "Beat 2", "Beat 3", "Beat 4", "Gates", "Beat 5", "Close"):
-        assert h in t, h
-    for s in ("mcp__unreal-mcp__list_toolsets", "scripts/gates.py", "wright:subagents:wright-engine-investigator",
-              "wright:subagents:wright-reference-investigator", "wright:subagents:wright-build-executor",
-              "wright:subagents:wright-validator", "ONE AT A TIME", "AgentSkillToolset"):
-        assert s in t, s
+    assert _frontmatter(ROOT / "skills/wright/SKILL.md")["name"] == "wright"
+    # A packaged entry point must actually resolve the instructions it sends a
+    # fresh Codex instance to; wording/headings are not a behavior test.
+    links = re.findall(r"\]\(([^)]+\.md)\)", t)
+    assert links
+    for target in links:
+        assert (ROOT / "skills/wright" / target).is_file(), target

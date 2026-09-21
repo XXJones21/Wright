@@ -1,76 +1,59 @@
-# Wright run plan: <slug>
+# Wright run plan: <run_id>
 
-Shared state for the Wright pipeline. The conductor appends each section; every agent reads the whole file. Sections appear in this order and are never reordered.
+Legacy global-stage format. New packet runs use packet-workflow.md and work_packets.py;
+do not copy this template into new packet runs or require every worker to read it.
 
-- Run slug: <slug>
-- Created: <YYYY-MM-DD>
-- Project: <ue_project_root>
-- Level: <level asset path from get_current_level>
-- Stop after: <beat or "validate">
-- Design docs: <design_docs>
+This is the readable current report. run.json selects current immutable artifacts.
+Use scripts/plan_sections.py to replace sections atomically; never append a second
+copy of the same stage. Workers read scoped packets and linked evidence as needed.
+
+- Run: <absolute run directory and run.json>
+- Project: <selected .uproject>
+- Connected editor identity: <verified project path or explicitly unresolved>
+- Level: <observed level path>
+- Requested stop: <plan|investigate|synthesize|execute|validate>
+- Task slug: <filesystem-safe task identifier>
+- Design docs: <selected document paths>
 
 ## Task
 
-<the task text verbatim>
+<verbatim user request>
 
 ## Engine grounding config
 
-<contents of profiles/ue5.config.json, verbatim, as a ```json fence>
+<profiles/ue5.config.json in a json fence; fresh discoveries supersede old observations>
 
 ## PROJECT GPS
 
-Snapshot of what exists in the live project at Gate 1. Read-only ground truth.
-
-### Level
-- Path: <level path>
-- Outliner folders: <get_folders>
-
-### Actors (<count>)
-| refPath tail | label | class | location |
-| --- | --- | --- | --- |
-
-### Assets under /Game
-- Folders: <list_folders /Game>
-- Blueprints (<count>): <object paths>
-- Materials (<count>): <object paths>
-- Textures (<count>): <object paths>
-- Data tables (<count>): <object paths>
-
-### Blueprints named by the task
-For each: parent class, variables (list_variables), functions (list_functions), custom events (list_events), and the EventGraph as DSL (read_graph_dsl).
-
-<truncation notice if GPS_MAX_CHARS was hit: "GPS TRUNCATED at <n> chars: <what was cut>">
+<observation time, query scopes, counts, relevant object paths and read-backs>
+<coverage: complete within named scope OR partial with specific omissions>
+<absence only from a targeted query, never inferred from truncation>
 
 ## TOOL API
 
-Per toolset the run will touch: a `### <fully qualified toolset name>` heading, then a COMPACT json fence carrying only tool names, one-line descriptions, and argument keys, in the shape `{"tools": [{"name": "<fully qualified name>.<tool>", "description": "<first sentence>", "inputSchema": {"properties": {"<argkey>": {}}}}]}`. No nested schemas, defaults, or titles. The tool-call gate reads these. The raw describe_toolset results live in `<run_dir>/toolapi/<fully qualified name>.json`; an agent that needs an argument's full shape Reads that file.
+<For each used toolset: ### fully.qualified.toolset and a compact json fence with
+{"tools":[{"name":"fully.qualified.toolset.tool","inputSchema":{"properties":{"argument":{}}}}]}>
+<Full raw schemas are linked under toolapi/. Store DSL documentation there too;
+do not paste non-JSON DSL fences into this TOOL API section.>
 
 ## PROJECT SKILLS
 
-Output of AgentSkillToolset.GetSkills for the skill paths ListSkills returned whose names end in BlueprintBasicsSkill and MaterialBasicsSkill, plus any whose description matches the task; those exact paths are passed to GetSkills {skillPaths: [...]}. These rank above Wright's defaults.
+<exact discovered skill paths, linked output files, and relevant instructions>
 
 ## Append order (do not pre-create these headings)
 
-Each beat appends exactly one of the sections below, in this order, the first time it runs. Never pre-create one ahead of the beat that owns it: gates.py and later beats find a section by its first `## ` match, so a placeholder heading created early would shadow the real one appended later. When you append a section, write it as a level-two heading `## <name>`; these lines are deliberately not headings.
+Remove this documentation section from the new run. Use these section names as stages
+produce actual evidence. Replace them on revision. Section content files may have
+subheadings; the section helper demotes level-two headings outside code fences.
 
 ```text
-1. Plan (orchestrator): Appended by Beat 1: GOAL, INV-n gaps through the four lenses, CLM-n claims.
-
-2. Finding: engine: Appended from findings/engine.md: one CLM-n: VERIFIED|REJECTED|UNVERIFIABLE line per claim, then the bottom line.
-
-3. Finding: reference: Appended from findings/reference.md: grounded loop patterns, options per INV, what has no precedent.
-
-4. Synthesis (design): Appended by Beat 3: every INV resolved as LOCKED / FORK / OPEN, the instrumented core action, provisioning, economy values, adversary and exits, concept plates linked, then the BUILD TASKS block.
-   BUILD TASKS
-   - [editor|blueprint|texture|needs-you] <title>: <brief>
-
-5. Artifact <n>: <title>: Appended per executor: the artifact body, the read-back evidence, capture paths, and the CALL LEDGER fence.
-
-6. Gate: Appended by scripts/gates.py.
-
-7. PROJECT GPS (post-build): Re-snapshot after Execute, same shape as PROJECT GPS.
-
-8. Validation: Appended from the validator: four checks and VERDICT: ship|revise with the gap list.
-
-9. Close: Beat statuses, artifact paths, the ordered NEEDS YOU list, the save reminder.
+1. Plan (orchestrator): GOAL, INV gaps, and positive CLM claims. Explicit CLAIMS: NONE only if no claims.
+2. Finding: engine: one verdict per CLM. Explicit VERDICTS: NONE only for a zero-claim plan.
+3. Finding: reference: options, trade-offs, sources, unresolved design questions.
+4. Synthesis (design): concrete INV resolutions, core loop, vantage, and BUILD TASKS list in execution order.
+5. Artifact <n>: <title>: link current immutable artifact path, task ID, revision, and summary. No copied stale body.
+6. Gate: generated by gates.py, only PASS permits validator signoff.
+7. PROJECT GPS (post-build): changed objects, current read-backs, observation time and scope.
+8. Validation: STATIC PASS/REVISE, RUNTIME NOT RUN, PLAYTEST NOT RUN, loop completeness and owned gaps.
+9. Close: completed scope, current artifacts/captures, gate and validation statuses, ordered Needs You.
 ```

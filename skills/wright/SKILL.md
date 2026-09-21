@@ -1,104 +1,136 @@
 ---
 name: wright
-description: "Run Wright, the game-development reasoning core, against a live Unreal Engine 5.8 project: frame a mechanic as design gaps and engine claims, verify every claim against the editor through the Unreal MCP, synthesize a concrete playable loop, build level content, materials, Blueprints, and ComfyUI textures in the editor, gate the artifacts, and validate against the live level. Use when: design or build a gameplay slice, mechanic, loop, level dressing, or Blueprint logic in an Unreal 5.8 project; /wright:run; 'have Wright design X'. Outputs: a run folder with plan.md, findings, artifacts, captures, concept plates, and an ordered NEEDS YOU list."
+description: "Plan game-wide Unreal prototypes in a shared sandbox, then build and polish a selected mission through playable phase handoffs and bounded packets. Use for gameplay pre-production, a mission slice, a focused engine probe, or continuation of a Wright run."
 ---
 
-# Wright, the conductor
+# Wright: a gameplay workflow harness
 
-You are Wright's conductor: the main-context agent that holds design judgment (Beat 1 Plan and Beat 3 Synthesize) and delegates grounding, research, building, and validation to four leaf subagents through the Agent tool. Read `references/wright-core.md` now; it is who you are. The shared state is one plan file on disk; each leaf agent reads it and returns a file; you append their results. Nothing else is shared.
+Wright supplies outcome selection, scoped context, evidence, and continuation state.
+The host agent supplies reasoning, tools, and optional worker execution. Read the
+short [core](references/wright-core.md), then the shared
+[packet workflow](references/packet-workflow.md). In Codex, read the
+[host adapter](references/codex-workflow.md) for tool discovery and dispatch.
 
-Epic's `unreal-mcp` skill (plugin unreal-engine-skills-for-claude-code) owns Unreal discovery and safety; when it is loaded, follow it. `references/unreal-notes.md` adds what it does not say. Every Unreal call: describe the toolset first, pass every parameter key, string-check the result.
+## Direct the production pipeline
 
-The MCP is single-threaded. You never call it while a subagent that holds MCP tools is running, and build executors run ONE AT A TIME.
+The current orchestrator acts as director; do not spawn a separate director role.
+Read [production phases and discipline briefs](references/production-pipeline.md).
+For pre-production, read [game-wide planning](references/preproduction-planning.md).
+Map the whole GDD and mission dependencies into a compact coverage plan, then prove
+small player experiments in separate rooms of one named prototype sandbox. Include
+camera/equipment behavior, a contextual debug HUD and concepts across the planned
+mission environments. Explicitly narrower probes retain their narrower scope.
+Across all three phases, identify shared systems/assets and their consumers before
+dispatch; every specialist proves, extends and refines these foundations through
+appropriate variations, including code, animation, materials, textures and VFX.
+Dispatch a bounded environment-art concept packet in parallel when useful. Concept
+work owns run-local images/briefs and has no editor access. One editor worker and
+one concept worker may be active; the director serializes state publication.
 
-## Gate 0: verify live (blocking)
+Present the playable rooms, coverage/deferrals, core-loop evidence and selected concept
+images for explicit user approval before production. Production focuses on the named
+mission/slice using the approved foundation, AI and additional mechanics. Review and
+obtain approval before post-production,
+which covers lighting, material refinement and short QA. Present that result for
+final acceptance. The helper records exact review/approval bindings; the director
+must supply actual user messages, never self-approval. Continue normal packets inside
+the active phase without new approval requests at every checkpoint.
+Every phase handoff must be playable by the user. Provide the saved level, launch
+steps, tested controls, objectives, known issues and runtime evidence; then collect
+the user's actual playtest feedback and approval before advancing. Artifacts or
+screenshots alone cannot complete pre-production, production or post-production.
 
-1. Load the Unreal tools with one ToolSearch call: `select:mcp__unreal-mcp__list_toolsets,mcp__unreal-mcp__describe_toolset,mcp__unreal-mcp__call_tool`. If they are not available, stop: the session was not launched from a project root with an editor-generated `.mcp.json`, or the editor is closed. Tell the operator the README steps.
-2. `list_toolsets`. It must include `editor_toolset.toolsets.scene.SceneTools` and `editor_toolset.toolsets.blueprint.BlueprintTools`. If it lists only `ToolsetRegistry.AgentSkillToolset` (and PCG), `AllToolsets` is not enabled: stop and tell the operator (Edit > Plugins > All Toolsets, restart, or `ModelContextProtocol.RefreshTools`).
-3. `mcp__plugin_comfy-local-mcp_comfy-local__health`. Not blocking: if it fails, note `comfy: down` and every `[texture]` task becomes `[needs-you]`; concept plates are skipped.
+Load only the selected discipline's brief. Roles define expertise; packets define
+bounded outcomes. A role may be adopted by the current agent or dispatched as needed.
 
-## Step 0.5: resolve machine config
+## Establish the environment first
 
-Read `references/machine-config.md`; if absent, `references/machine-config.example.md`. Resolve `UE_PROJECT_ROOT` (a `--project` argument wins), `RUNS_DIR`, `TEXTURE_STAGING_DIR`, `COMFY_TEXTURE_WORKFLOW`, `COMFY_PLATE_WORKFLOW`, `GPS_MAX_CHARS`, `DESIGN_DOCS`. If `UE_PROJECT_ROOT` cannot be resolved, stop and ask. Note `<plugin_root>` (this skill's grandparent directory). Parse `--stop-after <beat>`; default `validate`.
+Resolve the user's intended project and target level before editing. For a new
+slice, propose a named isolated test level. Never substitute the currently open
+level because a creation tool is missing. Existing-level work requires the user's
+explicit choice, recorded with the environment contract. An asset folder or outliner
+folder does not isolate a level.
 
-## Gate 1: create the run and the grounding floor (blocking)
+When the user has prepared a new test level, use that named level directly. Record
+`--level-mode existing` with the user's explicit selection as the reason; this means
+the level already exists, not that prior generated mission content may be reused.
+Verify the canonical package path, connected project and saved baseline. Do not
+create, duplicate, rename or Save As another level to satisfy the default setup flow.
+In a from-scratch evaluation, record allowed template sources and excluded prior-run
+assets; create mission-specific content in a fresh owned namespace. Do not copy prior
+run graphs, generated assets, actors, concepts or completion state into the new run.
 
-1. Slug the task (kebab, 40 chars max, prefix with the date `YYYYMMDD-`). `mkdir` `<RUNS_DIR>/<slug>/` with `findings/`, `artifacts/`, `captures/`, `plates/`, `toolapi/`.
-2. Copy `references/plan-template.md` to `<run_dir>/plan.md`, and delete the `## Append order` section from the copy (it is documentation for you, not run state); fill the header except the level line, and fill `## Task` with the task text verbatim. Read the file back; if it is missing or empty, stop.
-3. `## Engine grounding config`: paste `<plugin_root>/profiles/ue5.config.json` verbatim in a json fence.
-4. `## PROJECT GPS`, read-only, in this order (every parameter key present):
-   - `SceneTools.get_current_level {}`; `get_folders {}`; then write the level path into the header.
-   - `find_actors {root:null, name:"", actor_type:null, tag:"", bounds:null, collision_channels:null}`. For each refPath (cap 150; beyond that record the count and the first 150): `ActorTools.get_label {actor}`, `ObjectTools.get_class {instance}`, `ActorTools.get_actor_transform {actor}`. If more than 40 actors, batch these three reads with `ProgrammaticToolset.execute_tool_script` after `get_execution_environment {}`; the script only calls `get_*` tools and returns a dict (read-only rule).
-   - `AssetTools.list_folders {root_path:"/Game", recursive:false}`; `find_assets {folder_path:"/Game", name:"", asset_type:{refPath:"/Script/Engine.Blueprint"}, recursive:true, tags:null}`; same with `/Script/Engine.Material`, `/Script/Engine.Texture2D`, `/Script/Engine.DataTable`. Record object paths (package path plus `.` plus asset name).
-   - For each Blueprint the task names or that the level's PlayerStart or GameMode obviously depends on (at most 5), with `blueprint` as `{"refPath": "<object path>"}`: `BlueprintTools.get_parent {blueprint}`, `list_variables {blueprint, graph: null}`, `list_functions {blueprint}`, `list_events {blueprint}`, `get_graph {blueprint, graph_name: "EventGraph"}`, `read_graph_dsl {graph}`.
-   - Write the section per the template. If the text exceeds `GPS_MAX_CHARS`, cut the actor table last and append `GPS TRUNCATED at <n> chars: <what was cut>`.
-5. `## TOOL API`: `describe_toolset` for `editor_toolset.toolsets.scene.SceneTools`, `editor_toolset.toolsets.actor.ActorTools`, `editor_toolset.toolsets.asset.AssetTools`, `editor_toolset.toolsets.blueprint.BlueprintTools`, `editor_toolset.toolsets.material.MaterialTools`, `editor_toolset.toolsets.material_instance.MaterialInstanceTools`, `editor_toolset.toolsets.texture.TextureTools`, `editor_toolset.toolsets.object.ObjectTools`, `editor_toolset.toolsets.primitive.PrimitiveTools`, `editor_toolset.toolsets.static_mesh.StaticMeshTools`, `editor_toolset.toolsets.data_table.DataTableTools`, `editor_toolset.toolsets.programmatic.ProgrammaticToolset`, `EditorToolset.EditorAppToolset`, `EditorToolset.LogsToolset`, `GameplayTagsToolset.GameplayTagsToolset`, `ToolsetRegistry.AgentSkillToolset`. Save each raw result to `<run_dir>/toolapi/<fully qualified name>.json` with the Write tool; the raw results together run to hundreds of kilobytes and never go in the plan. Under a `### <fully qualified name>` heading paste a COMPACT json fence of exactly this shape, names and argument keys only, with no nested schemas, defaults, or titles:
+Initialize packet state with `scripts/work_packets.py`. The first bounded prerequisite
+is establishing a supported route to create/open the intended level and persist it.
+Discover that route from the current tools; do not treat the old survey's missing
+level-creation tool as a universal engine limitation. Create only the named test
+level within the user's scope. Record setup objects, counters and uncertainty through
+`setup-progress`; reconcile an interrupted setup before another write. If no supported route is available, report the exact
+setup handoff and stop dependent builds. Do not modify the current map as a fallback.
 
-   ```json
-   {"tools": [{"name": "<fully qualified name>.<tool>", "description": "<first sentence of the tool description>", "inputSchema": {"properties": {"<argkey>": {}, ...}}}, ...]}
-   ```
+Bind evidence of the connected project, exact target level, isolated-level provenance
+when applicable, and persistence. Recheck live project/level and PIE state immediately
+before mutations and after a session/model switch. Evidence files do not monitor the
+editor. The helper validates recorded contracts, not actual tool permissions.
 
-   An agent that needs an argument's full shape Reads `<run_dir>/toolapi/<fully qualified name>.json`. Then `BlueprintTools.get_graph_dsl_docs {}` under `### DSL`.
-6. `## PROJECT SKILLS`: `AgentSkillToolset.ListSkills {}`, which returns a map of full skill object paths to descriptions. Take the skill paths `ListSkills` returned whose names end in `BlueprintBasicsSkill` and `MaterialBasicsSkill`, plus any whose description matches the task; pass those exact paths to `GetSkills {skillPaths: [...]}` and paste the instructions.
+## Repeat a small work loop
 
-## Beat 1: Plan (you)
+1. **Choose one outcome.** One observable behavior, or one uncertainty resolved.
+   Preserve design choice through the four lenses in the core; do not design all
+   future systems before the next useful result.
+2. **Load its dependencies.** Use the selected packet, environment contract, and
+   verified dependency summaries. Retrieve full schemas or logs only as needed.
+3. **Resolve blocking unknowns.** Skip research when current evidence suffices.
+   An omitted object in a partial query is unknown, not absent.
+4. **Make the bounded change.** One worker holds the editor. Record changed objects
+   and progress after each logical unit. No speculative dressing before the first
+   functional action-to-outcome chain unless the user's objective is visual work.
+5. **Verify, save, checkpoint.** Complete every packet check, distinguish static from
+   runtime evidence, prove persistence, and publish the result through the helper.
+   Continue eligible packets within the active phase and user's scope without requesting approval
+   at every boundary. A checkpoint is not a new permission requirement.
 
-Read the whole plan file. Do NOT design yet. Append `## Plan (orchestrator)` with, naming your stage:
-1. GOAL, one sentence.
-2. DESIGN GAPS `INV-1..n`, derived by walking the slice second by second through all four lenses; a lens you skip is a hole: (a) the CORE ACTION (trigger, what it counts toward, the threshold, the feedback per step); (b) PROVISIONING (everything the player must be given to perform the loop from spawn; an event the engine reports is one the player must cause, so name what lets them cause it); (c) the ECONOMY (every count, timer, reward, cost, and the axis it varies along); (d) the ADVERSARY and the EXITS (griefer, stronger player, death, leave, timeout). Phrase each as a gap, not an answer.
-3. CLAIMS `CLM-1..n`: every tool signature, actor, asset, Blueprint member, node type, property, or capability the build will assume, one per line as `` - `CLM-n` <claim> ``, each verifiable against the TOOL API, the GPS, or a read-only call. If you are unsure something exists, that uncertainty IS the claim. Phrase every claim as a positive assertion that something exists or behaves a certain way (`SceneTools.find_actors accepts a tag filter`), never as a negative (`no tool saves the level`); a rejected negative would forbid real symbols at the gate.
-If `--stop-after plan`, go to Close.
+Plan, investigate, synthesize, execute, and validate are reasoning activities used
+as needed within this loop. They are not five mandatory global stages. Keep the queue
+small; define follow-up packets when preceding results justify them. Never name a
+whole mission director as one chunk merely because it is one Blueprint asset.
 
-## Beat 2: Investigate (two subagents, in parallel)
+## Budgets, interruption, and delegation
 
-Fill `references/engine-investigator-prompt.md` and `references/reference-investigator-prompt.md` with every placeholder resolved and dispatch `wright:subagents:wright-engine-investigator` and `wright:subagents:wright-reference-investigator` with the Agent tool in the same message (the reference investigator never touches the MCP; the engine investigator is read-only). When both return, append `findings/engine.md` under `## Finding: engine` and `findings/reference.md` under `## Finding: reference`, verbatim. When appending, demote any line that starts with `## ` to `### ` so the appended file cannot close the plan section. If the engine finding has no `CLM-n:` lines, re-dispatch it once with the note "use the exact CLM-n: VERDICT form". If `--stop-after investigate`, go to Close.
+Choose a tool-call/time budget for each packet; examples are initial tuning values,
+not proven performance promises. Check consumption before beginning another unit.
+At exhaustion, uncertain mutation, or repeated failure, checkpoint and split or
+reconcile the remaining work. Let an already-issued operation settle; record its
+outcome. A successfully verified unit can finish while recording a budget overrun.
+Never silently reset counters or repeat a create after an ambiguous result.
 
-## Beat 3: Synthesize (you)
+`status` and `resume` only read saved state. Continuing an interrupted packet requires
+fresh live inspection and an explicit reconciliation record. Supply the next model
+with the compact packet report; do not rebuild its context from the full transcript.
+Use [worker contracts](references/worker-contracts.md) only when a separate role adds
+value. Routine work can remain with one agent. Concept art can run alongside editor
+work in its separate lane; editor operations remain serialized.
 
-Read the whole plan. Append `## Synthesis (design)`, naming your stage:
-- Honor the Engine Investigator: drop or rework every REJECTED claim; never design around a rejected symbol; treat UNVERIFIABLE as absent.
-- Resolve EVERY INV: `LOCKED <value> because <why>`, `FORK (a) ... (b) ...` (the choice left to the designer), or `OPEN: <the specific quantity a playtest must tune>`. Prose like "it tracks progress" is not a decision; the count, threshold, and value are. Every need a gap named gets its own resolution.
-- Instrument the core action: what fires it, what it counts toward, the threshold, the feedback per step, exactly what the player receives, as values a builder can implement. Carry provisioning and every exit case.
-- Build against what exists (the GPS) before net-new systems.
-- VANTAGE: one line naming the camera transform (location and rotation) or the actor to `FocusOnActors` from which the result should be judged; the validator captures from it.
-- Concept plates: for each FORK that is visual, if comfy is up, `recommend_workflow {goal:"image concept art"}` then `generate_image {prompt, workflow:<comfy_plate_workflow>, width:1024, height:576}` per option; save or link the returned file under `<run_dir>/plates/` and cite it beside the fork.
-- End with the exact block:
+## Engine and evidence
 
-```
-BUILD TASKS
-- [editor|blueprint|texture|needs-you] <title>: <one-line brief>
-```
-Smallest real set first, in dependency order, at most 8. Anything the profile's `execution_lane.needs_you` covers is `[needs-you]`. If comfy is down, no `[texture]` tasks.
-If `--stop-after synthesize`, go to Close.
+Read [Unreal notes](references/unreal-notes.md) before engine operations. Read the
+[Blueprint playbook](references/blueprint-lane-playbook.md) or
+[texture playbook](references/comfy-texture-playbook.md) only for that lane.
+Discover signatures before use, inspect meaningful results, and read back changes.
+A reviewed recipe may batch known read operations; keep arbitrary editor scripts
+read-only. Future mutation recipes need separate validation and ownership controls.
 
-## Beat 4: Execute (build executors, ONE AT A TIME)
+Do not edit pre-existing assets outside the packet's allowed changes. Keep generated
+content run-scoped. Unsupported actions receive a concrete handoff. Never report
+`ship`, gameplay success, or persistence from a narrative assertion alone.
 
-Parse the BUILD TASKS block (the same rules as `scripts/gates.py parse_build_tasks`: `- [lane] title: brief`, lane defaults to editor). `<nn>` is the two-digit task index in that order, `01` upward; `<slug-title>` is the task title kebab-cased, 40 chars max. For each task in order: fill `references/build-executor-prompt.md`, dispatch `wright:subagents:wright-build-executor`, wait for it to return, then append its artifact file under `## Artifact <n>: <title>` verbatim. When appending, demote any line that starts with `## ` to `### ` so the appended file cannot close the plan section. Never dispatch the next executor before the previous returns. Do not call the MCP yourself while an executor runs. If an executor returns without an artifact file, record `## Artifact <n>: <title>` with "NOT PRODUCED: <its reply>" and continue.
+## Report
 
-## Gates (deterministic)
+Use [execution metrics](references/execution-metrics.md) to distinguish director work
+from actual subagent execution, including implementation, verification and coordination.
+Record available counters at normal checkpoints; never infer delegation from a role label.
 
-Run `python <plugin_root>/scripts/gates.py <run_dir>` with Bash. It appends `## Gate` to the plan and prints it; exit 1 means FAIL. On FAIL: re-dispatch each named executor once, ONE AT A TIME as in Beat 4, with the gate's lines added to the brief ("remove these symbols / calls"), replace the artifact file, and run the gate again; the script replaces any previous Gate section, so the plan always carries exactly one. A second FAIL proceeds to Validate with the FAIL standing. On INCONCLUSIVE: do not proceed to Validate; record the reason in `## Close` and halt for operator review, because the gate could not check anything.
-
-Then re-snapshot the GPS exactly as in Gate 1 step 4 and append it under `## PROJECT GPS (post-build)`.
-If `--stop-after execute`, go to Close.
-
-## Beat 5: Validate (subagent)
-
-Fill `references/validator-prompt.md` (the vantage comes from the Synthesis) and dispatch `wright:subagents:wright-validator`. Append `findings/validation.md` under `## Validation`. On `VERDICT: revise`: route each gap by its owner; `conductor re-synthesis` means re-run Beat 3 for that gap only and then Beat 4 for the affected tasks; `executor re-emit` means re-dispatch that task. At most two revise rounds; a second consecutive revise halts for operator review with the gap list.
-
-## Close
-
-Append `## Close` and reply to the operator with:
-- each beat's status and the run dir;
-- artifact paths and capture paths;
-- the ordered NEEDS YOU list compiled from every `[needs-you]` artifact and every `To wire` line, each with its five fields;
-- the gate result and the verdict line;
-- the reminder: save the level (`Ctrl+S`) and commit; Wright saved the assets it created under `/Game/Wright/<slug>/`.
-
-## Principles
-- Name your stage every turn. Widen the solution space; never collapse a design to one answer before the designer chooses.
-- Grounding over memory: if it is not in the TOOL API, the GPS, the skills, or a read-only call, it does not exist.
-- One artifact per executor; one executor at a time; read back every write; look before hand-off.
-- Add-only in the project. Everything under `/Game/Wright/<slug>/` and `Wright/<slug>`.
-- Tool grants on the leaf agents are advisory, not a boundary; the agents' instructions and the CALL LEDGER are what keep the investigators and the validator read-only in the editor.
-- No emojis, no em-dashes in anything you write.
+Return the outcome achieved, evidence paths, persistence, runtime status, actual
+call/time metrics when available, unfinished work, and exact next action. Completion
+of registered packets is not completion of an entire mission. Summarize what the
+user can now test. Legacy runs are not implicitly migrated into packet execution.

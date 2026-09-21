@@ -4,24 +4,24 @@
   "status": "active, profile #1 (Retrieval validation vertical, Mission 1 First Light)",
   "reference_corpus": {
     "kind": "unreal_mcp_tool_api",
-    "rule": "The TOOL API block in the plan (describe_toolset output) is the allow-list for calls: a toolset, tool, argument key, or enum value not present there does not exist. BlueprintTools.find_node_types and get_node_type_pins are the allow-list for Blueprint node type ids and pin names. ObjectTools.list_properties is the allow-list for UClass properties. The PROJECT GPS is the allow-list for content: an actor, asset, Blueprint, variable, or function not listed there does not exist in the project.",
+    "rule": "Discover tool names before use; raw live schemas establish argument keys and enum values. Blueprint node/pin and UClass property discovery ground their respective symbols. PROJECT GPS records observed content and query coverage. Omission from a scoped or truncated snapshot is unknown, not absent; use targeted reads.",
     "discovery": "list_toolsets, then describe_toolset before any call into a toolset; never assume a signature."
   },
   "execution_lane": {
     "editor": "SceneTools, PrimitiveTools, ActorTools, StaticMeshTools, ObjectTools, AssetTools, EditorAppToolset: Wright places, transforms, tags, foldering, assigns materials, captures, saves.",
     "blueprint": "BlueprintTools plus DataTableTools and GameplayTagsToolset: Wright creates Blueprints, variables, components, events, dispatchers, writes graphs through write_graph_dsl, compiles, reads back.",
     "texture": "comfy-local generate_image, scripts/textures.py, TextureTools.import_file, MaterialTools or MaterialInstanceTools, assign, read back.",
-    "needs_you": "C++ edits and new UFUNCTIONs (LiveCodingToolset.CompileLiveCoding exists but new declarations need an editor restart), level creation (no tool), Fab or Bridge downloads, external asset packs, anything no toolset exposes.",
+    "needs_you": "C++ changes requiring an editor restart, unavailable level-provisioning routes, external purchases/downloads, and capabilities not supported by the currently connected tools. Discover setup capabilities before assigning a handoff.",
     "rule": "Wright acts through the MCP and never claims a result its call ledger and read-backs do not show. Anything it cannot perform is handed to the designer as a Needs You spec."
   },
   "constraints": [
     "Tool calls execute serially on the editor game thread: one build executor at a time; never overlap MCP calls.",
     "Primitives are limited to add_cube, add_cylinder, add_sphere, add_cone (components on a host actor). Richer geometry comes only from existing Content or StaticMeshTools.import_file of a staged file.",
-    "There is no level-creation tool; SceneTools.load_level opens existing levels only. Wright builds in the level named by the task.",
+    "The original survey did not find level creation through its selected MCP toolsets. Discover currently supported creation/open/save routes; require the exact contracted level and persistence before scene work. Never substitute the active map.",
     "Per-call latency grows with actor count (~0.09 s empty to ~1 s at ~260 actors). Keep hero actors in the tens; represent mass as a mesh plus texture or a PCG scatter, never hundreds of actors.",
     "ProgrammaticToolset.execute_tool_script is privileged; Wright uses it only for read-only batch queries (the GPS snapshot), never for mutation.",
     "Blueprint structural changes (components, variables, function signatures) do not exist on the CDO or spawned instances until compile_blueprint runs.",
-    "Editor-only tools misbehave during Play In Editor; check IsPIERunning before asset work and do not start PIE in v1."
+    "Editor-only tools misbehave during Play In Editor; check IsPIERunning before asset work. For an authorized gameplay test, use a supported bounded runtime test and end PIE before editing. Every phase hands a saved playable level to the user for evaluation; never infer runtime success from compilation alone."
   ],
   "footguns": [
     "Every parameter key in the describe schema must be present in the call, optional ones as explicit null or an empty string; a missing key is rejected with 'input param ... is required'. Build argument objects from the schema, never from memory.",
@@ -34,21 +34,56 @@
     "An xform with a rotation must give pitch, yaw, and roll together; omit a field for identity. Units are centimeters, Z up.",
     "EditorAppToolset.CaptureViewport requires captureTransform, annotations, and bShowUI keys; captureTransform null captures the current viewport. Call SelectActors with an empty list first or the selection outline and gizmo bake into the capture. Editor sprites (lights, player start, cameras) and the axis widget still appear with bShowUI false; reviewers ignore them.",
     "SceneTools.find_actors returns refPaths only; the label comes from ActorTools.get_label and the class from ObjectTools.get_class. Batch-spawned actors share a _UAID_ segment.",
-    "The template level already has a DirectionalLight and sky; adding another directional light triggers a competing-lights warning. Reuse the existing sun.",
+    "Inspect the contracted level for existing lighting before adding a DirectionalLight. The old template had a sun and sky; a new test level may not. Avoid competing directional lights and do not assume template contents.",
     "Pure Blueprint node outputs are recomputed per connected wire; store a reused result in a variable. Casting to a Blueprint class creates a hard load dependency; prefer interfaces.",
     "BlueprintTools.write_graph_dsl compiles the Blueprint; a compile warning or error comes back in the result text, not as an exception. Class paths, enum values, and asset refs inside DSL must be quoted strings."
   ],
   "pattern_table": [
-    {"lane": "editor", "task": "spawn a placed form", "pattern": "SceneTools.add_to_scene_from_class {actor_type:{refPath:'/Script/Engine.StaticMeshActor'}, name, xform, parent:null, snap_to_ground:false} -> returnValue.refPath; PrimitiveTools.add_cube {actor:{refPath}, name, dimensions:{x,y,z}, local_transform:null}; ActorTools.get_components {actor, component_type:{refPath:'/Script/Engine.StaticMeshComponent'}}; ObjectTools.set_properties {instance:<component>, values:'{\"overrideMaterials\":[{\"refPath\":\"/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial\"}]}'}; get_properties read-back; SceneTools.set_actor_folder {actor, folder_path:'Wright/<slug>'}"},
-    {"lane": "editor", "task": "look at the result", "pattern": "EditorAppToolset.SelectActors {actors:[]}; SetCameraTransform {transform:{location, rotation, scale}}; CaptureViewport {captureTransform:null, annotations:{gridSpacing:0, gridExtent:0, gridHeight:0, maxLabelDistance:0}, bShowUI:false} -> returnValue.image.data (base64 PNG); decode to <run_dir>/captures/<n>.png and Read it"},
-    {"lane": "editor", "task": "read what exists", "pattern": "SceneTools.get_current_level {}; find_actors {root:null, name:'', actor_type:null, tag:'', bounds:null, collision_channels:null}; per actor ActorTools.get_label, ObjectTools.get_class, ActorTools.get_actor_transform; AssetTools.find_assets {folder_path:'/Game', name:'', asset_type:{refPath:'/Script/Engine.Blueprint'}, recursive:true, tags:null}"},
-    {"lane": "blueprint", "task": "author a Blueprint actor with logic", "pattern": "AssetTools.create_folder {path:'/Game/Wright/<slug>'}; BlueprintTools.create {folder_path, asset_name, asset_type:{refPath:'/Script/Engine.Actor'}} -> blueprint ref (object path); add_variable {blueprint, name, type_name, graph:null, container_type:null}; ActorTools.add_component {owner:<blueprint>, component_type:{refPath:'/Script/Engine.StaticMeshComponent'}, name}; get_graph {blueprint, graph_name:'EventGraph'}; find_node_types {graph, type_id_filter:'<word>', context_pins:null} and get_node_type_pins before any DSL; write_graph_dsl {graph, code}; compile_blueprint {blueprint, warnings_as_errors:true}; read_graph_dsl {graph} and diff; AssetTools.save_assets {asset_paths:[...]}"},
-    {"lane": "blueprint", "task": "tuning values the economy lens produced", "pattern": "DataTableTools.search_row_structs {struct_name:'<hint>'}; create {folder_path, asset_name, schema}; add_rows {data_table, row_names}; set_rows {data_table, values}; get_rows read-back"},
-    {"lane": "texture", "task": "a seamless PBR tile on a surface", "pattern": "comfy recommend_workflow {goal:'image seamless tileable texture'}; generate_image {prompt, workflow, width:1024, height:1024}; python scripts/textures.py <in> <albedo> <normal> --strength 6; TextureTools.import_file {folder_path:'/Game/Wright/<slug>', asset_name:'T_<name>_A', source_file}; same for _N; MaterialTools.create_material; add_expression TextureSample x2 plus TextureCoordinate; ObjectTools.set_properties on the normal sample values:'{\"texture\":{\"refPath\":\"/Game/Wright/<slug>/T_<name>_N.T_<name>_N\"},\"samplerType\":\"SAMPLERTYPE_Normal\"}'; connect_to_output RGB -> MP_BaseColor and RGB -> MP_Normal; recompile; assign via overrideMaterials on every StaticMeshComponent; read back; save_assets"}
+    {
+      "lane": "editor",
+      "task": "spawn a placed form",
+      "pattern": "SceneTools.add_to_scene_from_class {actor_type:{refPath:'/Script/Engine.StaticMeshActor'}, name, xform, parent:null, snap_to_ground:false} -> returnValue.refPath; PrimitiveTools.add_cube {actor:{refPath}, name, dimensions:{x,y,z}, local_transform:null}; ActorTools.get_components {actor, component_type:{refPath:'/Script/Engine.StaticMeshComponent'}}; ObjectTools.set_properties {instance:<component>, values:'{\"overrideMaterials\":[{\"refPath\":\"/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial\"}]}'}; get_properties read-back; SceneTools.set_actor_folder {actor, folder_path:'Wright/<slug>'}"
+    },
+    {
+      "lane": "editor",
+      "task": "look at the result",
+      "pattern": "EditorAppToolset.SelectActors {actors:[]}; SetCameraTransform {transform:{location, rotation, scale}}; CaptureViewport {captureTransform:null, annotations:{gridSpacing:0, gridExtent:0, gridHeight:0, maxLabelDistance:0}, bShowUI:false} -> returnValue.image.data (base64 PNG); decode to <run_dir>/captures/<n>.png and Read it"
+    },
+    {
+      "lane": "editor",
+      "task": "read what exists",
+      "pattern": "SceneTools.get_current_level {}; find_actors {root:null, name:'', actor_type:null, tag:'', bounds:null, collision_channels:null}; per actor ActorTools.get_label, ObjectTools.get_class, ActorTools.get_actor_transform; AssetTools.find_assets {folder_path:'/Game', name:'', asset_type:{refPath:'/Script/Engine.Blueprint'}, recursive:true, tags:null}"
+    },
+    {
+      "lane": "blueprint",
+      "task": "author a Blueprint actor with logic",
+      "pattern": "AssetTools.create_folder {path:'/Game/Wright/<slug>'}; BlueprintTools.create {folder_path, asset_name, asset_type:{refPath:'/Script/Engine.Actor'}} -> blueprint ref (object path); add_variable {blueprint, name, type_name, graph:null, container_type:null}; ActorTools.add_component {owner:<blueprint>, component_type:{refPath:'/Script/Engine.StaticMeshComponent'}, name}; get_graph {blueprint, graph_name:'EventGraph'}; find_node_types {graph, type_id_filter:'<word>', context_pins:null} and get_node_type_pins before any DSL; write_graph_dsl {graph, code}; compile_blueprint {blueprint, warnings_as_errors:true}; read_graph_dsl {graph} and diff; AssetTools.save_assets {asset_paths:[...]}"
+    },
+    {
+      "lane": "blueprint",
+      "task": "tuning values the economy lens produced",
+      "pattern": "DataTableTools.search_row_structs {struct_name:'<hint>'}; create {folder_path, asset_name, schema}; add_rows {data_table, row_names}; set_rows {data_table, values}; get_rows read-back"
+    },
+    {
+      "lane": "texture",
+      "task": "a seamless PBR tile on a surface",
+      "pattern": "comfy recommend_workflow {goal:'image seamless tileable texture'}; generate_image {prompt, workflow, width:1024, height:1024}; python scripts/textures.py <in> <albedo> <normal> --strength 6; TextureTools.import_file {folder_path:'/Game/Wright/<slug>', asset_name:'T_<name>_A', source_file}; same for _N; MaterialTools.create_material; add_expression TextureSample x2 plus TextureCoordinate; ObjectTools.set_properties on the normal sample values:'{\"texture\":{\"refPath\":\"/Game/Wright/<slug>/T_<name>_N.T_<name>_N\"},\"samplerType\":\"SAMPLERTYPE_Normal\"}'; connect_to_output RGB -> MP_BaseColor and RGB -> MP_Normal; recompile; assign via overrideMaterials on every StaticMeshComponent; read back; save_assets"
+    }
   ],
   "ownership": {
     "content_root": "/Game/Wright/<slug>/",
     "outliner_folder": "Wright/<slug>",
-    "rule": "add-only: never remove_from_scene, delete, move, or rename anything not created in this run; save_assets on what you create; tell the operator to save the level."
+    "rule": "add-only: never remove_from_scene, delete, move, or rename anything not created in this run; save only owned assets through verified supported routes. If level saving requires an operator, provide the exact handoff and verify persistence before completing the affected change."
+  },
+  "environment_contract": {
+    "default_for_new_slice": "propose an isolated test level",
+    "existing_level": "requires explicit user choice recorded with reason",
+    "before_scene_work": [
+      "verify connected project",
+      "verify exact target level",
+      "verify new-level provenance when isolated",
+      "verify persistence"
+    ],
+    "unsupported_setup": "stop dependent builds and provide the exact handoff"
   }
 }

@@ -64,6 +64,8 @@ def test_parse_build_tasks_defaults_lane_to_editor():
 
 import json, pathlib, subprocess, sys as _sys
 
+ZERO_CLAIMS = "\n## Plan (orchestrator)\nCLAIMS: NONE\n\n## Finding: engine\nVERDICTS: NONE\n"
+
 TOOL_API = """
 ## TOOL API
 
@@ -79,6 +81,7 @@ TOOL_API = """
 """
 
 LEDGER_OK = """
+Lane: editor
 # Artifact: blockout
 
 CALL LEDGER
@@ -87,6 +90,7 @@ CALL LEDGER
 ```
 """
 LEDGER_BAD = """
+Lane: editor
 CALL LEDGER
 ```jsonl
 {"toolset": "editor_toolset.toolsets.scene.SceneTools", "tool": "spawn_actor", "args": ["name"]}
@@ -129,7 +133,7 @@ def test_run_appends_gate_section(tmp_path):
 
 def test_cli_exit_code(tmp_path):
     run = tmp_path / "run"; (run / "artifacts").mkdir(parents=True)
-    (run / "plan.md").write_text("# plan\n" + TOOL_API, encoding="utf-8")
+    (run / "plan.md").write_text("# plan\n" + TOOL_API + ZERO_CLAIMS, encoding="utf-8")
     (run / "artifacts" / "01.md").write_text(LEDGER_OK, encoding="utf-8")
     script = pathlib.Path(gates.__file__)
     r = subprocess.run([_sys.executable, str(script), str(run)], capture_output=True, text=True)
@@ -138,7 +142,7 @@ def test_cli_exit_code(tmp_path):
 
 def test_run_without_artifacts_reports_inconclusive_result(tmp_path):
     run = tmp_path / "run"; run.mkdir(parents=True)
-    (run / "plan.md").write_text("# plan\n" + TOOL_API, encoding="utf-8")
+    (run / "plan.md").write_text("# plan\n" + TOOL_API + ZERO_CLAIMS, encoding="utf-8")
     section = gates.run(run)
     assert "RESULT: INCONCLUSIVE" in section
     assert "RESULT: FAIL" not in section
@@ -164,7 +168,7 @@ def test_parse_tool_api_reads_the_compact_fence():
 def test_run_twice_replaces_the_gate_section(tmp_path):
     run = tmp_path / "run"; (run / "artifacts").mkdir(parents=True)
     plan = run / "plan.md"
-    plan.write_text("# plan\n\n## PROJECT GPS\n\nBP_FirstPersonCharacter\n" + TOOL_API, encoding="utf-8")
+    plan.write_text("# plan\n\n## PROJECT GPS\n\nBP_FirstPersonCharacter\n" + TOOL_API + ZERO_CLAIMS, encoding="utf-8")
     art = run / "artifacts" / "01-blockout.md"
     art.write_text(LEDGER_BAD, encoding="utf-8")
     gates.run(run)
@@ -216,6 +220,7 @@ TOOL_API_WITH_SAVE = """
 """
 
 LEDGER_SAVE = """
+Lane: blueprint
 # Artifact: evidence blueprint
 
 Saved the Blueprint with save_assets after the compile.
@@ -241,3 +246,270 @@ def test_rejected_negative_claim_does_not_forbid_a_tool_api_symbol(tmp_path):
     assert "forbidden symbol" not in section
     assert "save_assets" not in section
     assert "RESULT: PASS" in section
+
+import pytest
+
+
+def make_run(tmp_path, artifact=LEDGER_OK, claims=ZERO_CLAIMS, api=TOOL_API):
+    run = tmp_path / "run"
+    (run / "artifacts").mkdir(parents=True)
+    (run / "plan.md").write_text("# plan\n" + api + claims, encoding="utf-8")
+    if artifact is not None:
+        (run / "artifacts" / "01.md").write_text(artifact, encoding="utf-8")
+    return run
+
+
+@pytest.mark.parametrize("artifact, problem", [
+    ("Lane: editor\nNothing recorded.", "nonempty valid CALL LEDGER"),
+    ("Lane: editor\nCALL LEDGER\n```jsonl\n```\n", "nonempty valid CALL LEDGER"),
+    (LEDGER_OK.replace('"args": [', '"args": "wrong", "other": ['), "string-list args"),
+    (LEDGER_OK.replace('"actor_type", ', '', 1), "missing argument: actor_type"),
+    (LEDGER_OK.replace('"actor_type", ', '"actor_type", "actor_type", ', 1), "duplicate argument keys"),
+    (LEDGER_OK.replace('\n```\n', '\nnot json\n```\n'), "invalid JSON"),
+    (LEDGER_OK + "\nCALL LEDGER\n```jsonl\n```\n", "expected one CALL LEDGER"),
+    (LEDGER_OK.replace('Lane: editor\n', ''), "Lane: declaration"),
+    (LEDGER_OK.replace('Lane: editor', 'Lane: editor\nLane: needs-you'), "Lane: declaration"),
+    ("```text\nLane: needs-you\nNO TOOL CALLS\n```", "Lane: declaration"),
+    ("Lane: editor\nNO TOOL CALLS\n", "NO TOOL CALLS requires"),
+    ("Lane: needs-you\nNO TOOL CALLS\nCALL LEDGER\n```jsonl\ninvalid\n```", "invalid JSON"),
+    (LEDGER_OK.replace('Lane: editor', 'Lane: needs-you\nNO TOOL CALLS'), "NO TOOL CALLS requires"),
+])
+def test_bad_ledger_or_lane_never_passes(tmp_path, artifact, problem):
+    result = gates.run(make_run(tmp_path, artifact=artifact))
+    assert "RESULT: FAIL" in result
+    assert problem in result
+
+
+@pytest.mark.parametrize("ledger", ["", "\nCALL LEDGER\n```jsonl\n```\n"])
+def test_explicit_needs_you_no_call_exemption(tmp_path, ledger):
+    result = gates.run(make_run(tmp_path, artifact="Lane: needs-you\nNO TOOL CALLS\n" + ledger))
+    assert "RESULT: PASS" in result
+
+
+@pytest.mark.parametrize("api", [
+    "", TOOL_API + TOOL_API,
+    TOOL_API.replace('"tools": [', '"tools": {"bad": [' ).replace(']}', ']}}'),
+    TOOL_API.replace('"name": "editor_toolset', '"name": "bad", "name": "editor_toolset', 1),
+    TOOL_API.replace('"properties": {"root": {}', '"properties": {"root": "bad"'),
+    TOOL_API + '\n```json\ninvalid\n```\n',
+    TOOL_API.replace('```\n', ''),
+])
+def test_invalid_api_never_passes(tmp_path, api):
+    assert "RESULT: FAIL" in gates.run(make_run(tmp_path, api=api))
+
+
+@pytest.mark.parametrize("claim_rows, verdict_rows, problem", [
+    ("CLM-1: BP_UnknownThing exists.", "", "missing verdict for CLM-1"),
+    ("CLM-1: BP_UnknownThing exists.", "CLM-2: VERIFIED", "unknown verdict ID CLM-2"),
+    ("CLM-1: BP_UnknownThing exists.", "CLM-1: VERIFIED\nCLM-1: REJECTED", "duplicate CLM-1"),
+    ("CLM-1: BP_UnknownThing exists.\nCLM-01: duplicate", "CLM-1: VERIFIED", "duplicate CLM-1"),
+    ("CLM-1: BP_UnknownThing exists.", "CLM-1: VERIFIED or REJECTED", "exactly one leading verdict"),
+    ("CLM-1:", "CLM-1: VERIFIED", "empty claim"),
+    ("CLM-one: Broken ID", "VERDICTS: NONE", "malformed claim row"),
+    ("CLAIMS: NONE\n| CLM-1 | hidden claim |", "VERDICTS: NONE", "malformed claim row"),
+    ("CLAIMS: NONE\nCLM-1: BP_UnknownThing exists.", "CLM-1: VERIFIED", "ambiguous CLAIMS: NONE"),
+    ("", "", "explicitly for zero claims"),
+])
+def test_claim_coverage_failures(tmp_path, claim_rows, verdict_rows, problem):
+    claims = f"\n## Plan (orchestrator)\n{claim_rows}\n## Finding: engine\n{verdict_rows}\n"
+    result = gates.run(make_run(tmp_path, claims=claims))
+    assert "RESULT: FAIL" in result
+    assert problem in result
+
+
+@pytest.mark.parametrize("heading", ["Plan (orchestrator)", "Finding: engine", "PROJECT GPS"])
+def test_duplicate_authoritative_sections_fail(tmp_path, heading):
+    claims = ZERO_CLAIMS
+    if heading == "PROJECT GPS":
+        claims += "\n## PROJECT GPS\nBP_KnownThing\n"
+    claims += f"\n## {heading}\nStale evidence.\n"
+    assert "RESULT: FAIL" in gates.run(make_run(tmp_path, claims=claims))
+
+
+@pytest.mark.parametrize("verdict", ["REJECTED", "UNVERIFIABLE"])
+def test_unsupported_claim_usage_fails_without_grounding_from_verdict_prose(tmp_path, verdict):
+    claims = f"\n## Plan\nCLM-1: BP_UnknownThing exists.\n## Finding: engine\nCLM-1: {verdict} - BP_UnknownThing not established.\n"
+    result = gates.run(make_run(tmp_path, artifact=LEDGER_OK + "\nUse BP_UnknownThing", claims=claims))
+    assert "RESULT: FAIL" in result and "forbidden symbol" in result
+
+
+def test_api_description_does_not_confirm_rejected_symbol(tmp_path):
+    api = TOOL_API.replace('"tools": [', '"description": "BP_UnknownThing", "tools": [')
+    claims = "\n## Plan\nCLM-1: BP_UnknownThing exists.\n## Finding: engine\nCLM-1: REJECTED\n"
+    assert "forbidden symbol" in gates.run(make_run(tmp_path, api=api, claims=claims, artifact=LEDGER_OK + "\nBP_UnknownThing"))
+
+
+def test_confirmed_symbol_does_not_confirm_other_parts_of_rejected_claim(tmp_path):
+    claims = "\n## PROJECT GPS\nBP_KnownThing\n## Plan\nCLM-1: BP_KnownThing has OnUnsupportedEvent.\n## Finding: engine\nCLM-1: REJECTED\n"
+    result = gates.run(make_run(tmp_path, claims=claims, artifact=LEDGER_OK + "\nBP_KnownThing OnUnsupportedEvent"))
+    assert "forbidden symbol 'OnUnsupportedEvent'" in result
+    assert "forbidden symbol 'BP_KnownThing'" not in result
+
+
+@pytest.mark.parametrize("artifact, claims, expected", [(LEDGER_OK, ZERO_CLAIMS, 0), ("bad", ZERO_CLAIMS, 1), (None, ZERO_CLAIMS, 2)])
+def test_cli_status_codes(tmp_path, artifact, claims, expected):
+    run = make_run(tmp_path, artifact=artifact, claims=claims)
+    result = subprocess.run([sys.executable, str(pathlib.Path(gates.__file__)), str(run)], capture_output=True, text=True)
+    assert result.returncode == expected, result.stdout + result.stderr
+
+
+def test_manifest_uses_current_revision_only_and_rejects_tampering(tmp_path):
+    import run_state
+    project = tmp_path / "Project"
+    project.mkdir()
+    (project / "Example.uproject").write_text("{}", encoding="utf-8")
+    state = run_state.init_run(project, task="gate-test")
+    run = pathlib.Path(state["run_dir"])
+    synthesis = "\n## Synthesis\nBUILD TASKS\n- [editor] First: build\n"
+    (run / "plan.md").write_text("# plan\n" + TOOL_API + ZERO_CLAIMS + synthesis, encoding="utf-8")
+    source = project / "builder.md"
+    source.write_text("Lane: editor\ninvalid old revision", encoding="utf-8")
+    run_state.register_artifact(project, run, task_id="01", source=source, name="result.md")
+    source.write_text(LEDGER_OK, encoding="utf-8")
+    run_state.register_artifact(project, run, task_id="01", source=source, name="result.md")
+    (run / "artifacts" / "unregistered-draft.md").write_text("bad", encoding="utf-8")
+    assert "RESULT: PASS" in gates.run(run)
+    current = run_state.load_run(project, run)["artifacts"]["result.md"]
+    (run / current["path"]).write_text(LEDGER_OK + "tampered", encoding="utf-8")
+    result = gates.run(run)
+    assert "RESULT: FAIL" in result and "invalid run manifest" in result
+
+
+def test_malformed_manifest_does_not_fall_back_to_legacy_artifacts(tmp_path):
+    run = make_run(tmp_path)
+    (run / "run.json").write_text("not json", encoding="utf-8")
+    result = gates.run(run)
+    assert "RESULT: FAIL" in result and "invalid run manifest" in result
+
+
+def test_partial_four_of_eight_build_tasks_fail(tmp_path):
+    synthesis = "\n## Synthesis (orchestrator)\nBUILD TASKS\n" + "\n".join(
+        f"- [editor] Task {i}: build task {i}" for i in range(1, 9))
+    run = make_run(tmp_path, claims=ZERO_CLAIMS + synthesis)
+    for number in range(2, 5):
+        (run / "artifacts" / f"{number:02d}-task.md").write_text(LEDGER_OK, encoding="utf-8")
+    result = gates.run(run)
+    assert "RESULT: FAIL" in result
+    for number in range(5, 9):
+        assert f"missing artifact for build task {number:02d}" in result
+
+
+def test_build_task_coverage_includes_explicit_needs_you_artifact(tmp_path):
+    synthesis = "\n## Synthesis\nBUILD TASKS\n- [editor] First: build\n- [needs-you] Second: user input\n"
+    run = make_run(tmp_path, claims=ZERO_CLAIMS + synthesis)
+    assert "missing artifact for build task 02" in gates.run(run)
+    (run / "artifacts" / "02-user.md").write_text("Lane: needs-you\nNO TOOL CALLS\n", encoding="utf-8")
+    assert "RESULT: PASS" in gates.run(run)
+
+
+@pytest.mark.parametrize("name, body, problem", [
+    ("02-wrong.md", LEDGER_OK, "lane does not match build task 02"),
+    ("01-duplicate.md", LEDGER_OK, "duplicate artifact coverage for build task 01"),
+    ("03-unknown.md", LEDGER_OK, "unknown or missing build task ID"),
+])
+def test_build_task_artifact_mapping_errors(tmp_path, name, body, problem):
+    synthesis = "\n## Synthesis\nBUILD TASKS\n- [editor] First: build\n- [needs-you] Second: user input\n"
+    run = make_run(tmp_path, claims=ZERO_CLAIMS + synthesis)
+    (run / "artifacts" / name).write_text(body, encoding="utf-8")
+    result = gates.run(run)
+    assert "RESULT: FAIL" in result and problem in result
+
+
+def test_manifest_build_task_coverage_uses_task_id_not_artifact_name(tmp_path):
+    import run_state
+    project = tmp_path / "Project"
+    project.mkdir()
+    (project / "Example.uproject").write_text("{}", encoding="utf-8")
+    (project / "Other.uproject").write_text("{}", encoding="utf-8")
+    state = run_state.init_run(project / "Example.uproject", task="gate-test")
+    run = pathlib.Path(state["run_dir"])
+    synthesis = "\n## Synthesis\nBUILD TASKS\n- [editor] First: build\n"
+    (run / "plan.md").write_text("# plan\n" + TOOL_API + ZERO_CLAIMS + synthesis, encoding="utf-8")
+    source = project / "draft.md"
+    source.write_text(LEDGER_OK, encoding="utf-8")
+    run_state.register_artifact(project / "Example.uproject", run, task_id="01", source=source, name="arbitrary-name.md")
+    assert "RESULT: PASS" in gates.run(run)
+
+
+def test_fenced_gate_and_authoritative_heading_examples_are_preserved(tmp_path):
+    example = "\n## Notes\n```markdown\n## Gate\nexample\n## TOOL API\nexample\n```\n"
+    run = make_run(tmp_path, claims=ZERO_CLAIMS + example)
+    assert "RESULT: PASS" in gates.run(run)
+    assert example.strip() in (run / "plan.md").read_text(encoding="utf-8")
+    assert "RESULT: PASS" in gates.run(run)
+    assert example.strip() in (run / "plan.md").read_text(encoding="utf-8")
+
+
+def test_duplicate_build_task_blocks_are_ambiguous(tmp_path):
+    synthesis = "\n## Synthesis\nBUILD TASKS\n- [editor] First: build\n\nBUILD TASKS\n- [editor] Hidden: build\n"
+    result = gates.run(make_run(tmp_path, claims=ZERO_CLAIMS + synthesis))
+    assert "RESULT: FAIL" in result and "duplicate BUILD TASKS" in result
+
+
+def test_gate_atomic_write_failure_preserves_original_plan(tmp_path, monkeypatch):
+    import plan_sections
+    run = make_run(tmp_path)
+    plan = run / "plan.md"
+    original = plan.read_bytes()
+
+    def interrupted_replace(*args, **kwargs):
+        raise OSError("simulated interrupted replacement")
+
+    monkeypatch.setattr(plan_sections.os, "replace", interrupted_replace)
+    with pytest.raises(OSError, match="simulated interrupted replacement"):
+        gates.run(run)
+    assert plan.read_bytes() == original
+    assert not list(run.glob(".plan-*"))
+
+
+def test_pre_and_post_build_gps_are_distinct_sections(tmp_path):
+    claims = "\n## PROJECT GPS\nBP_KnownThing\n## PROJECT GPS (post-build)\nBP_KnownThing BP_NewThing\n"
+    claims += "\n## Plan\nCLM-1: BP_KnownThing has OnUnsupportedEvent.\n## Finding: engine\nCLM-1: REJECTED\n"
+    result = gates.run(make_run(tmp_path, claims=claims, artifact=LEDGER_OK + "\nBP_KnownThing"))
+    assert "RESULT: PASS" in result
+    assert "duplicate PROJECT GPS" not in result
+
+
+def test_same_lane_synthesis_change_requires_artifact_reregistration(tmp_path):
+    import run_state
+    project = tmp_path / "Project"
+    project.mkdir()
+    (project / "Example.uproject").write_text("{}", encoding="utf-8")
+    state = run_state.init_run(project, task="gate-test")
+    run = pathlib.Path(state["run_dir"])
+    synthesis = "\n## Synthesis (design)\nBUILD TASKS\n- [editor] First: build a wall\n"
+    plan = run / "plan.md"
+    plan.write_text("# plan\n" + TOOL_API + ZERO_CLAIMS + synthesis, encoding="utf-8")
+    source = project / "draft.md"
+    source.write_text(LEDGER_OK, encoding="utf-8")
+    run_state.register_artifact(project, run, task_id="01", source=source, name="result.md")
+    assert "RESULT: PASS" in gates.run(run)
+    plan.write_text(plan.read_text(encoding="utf-8").replace("build a wall", "build a bridge"), encoding="utf-8")
+    result = gates.run(run)
+    assert "RESULT: FAIL" in result and "artifact synthesis is stale or missing" in result
+    run_state.register_artifact(project, run, task_id="01", source=source, name="result.md")
+    assert "RESULT: PASS" in gates.run(run)
+    manifest = run / "run.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    del data["artifacts"]["result.md"]["synthesis_sha256"]
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    assert "RESULT: FAIL" in gates.run(run)
+
+
+@pytest.mark.parametrize("synthesis", ["", "\n## Synthesis\nDesign only.\n", "\n## Synthesis\nBUILD TASKS\n"])
+def test_manifest_execution_requires_synthesis_build_tasks(tmp_path, synthesis):
+    import run_state
+    project = tmp_path / "Project"
+    project.mkdir()
+    (project / "Example.uproject").write_text("{}", encoding="utf-8")
+    state = run_state.init_run(project, task="gate-test")
+    run = pathlib.Path(state["run_dir"])
+    (run / "plan.md").write_text("# plan\n" + TOOL_API + ZERO_CLAIMS + synthesis, encoding="utf-8")
+    source = project / "draft.md"
+    source.write_text(LEDGER_OK, encoding="utf-8")
+    run_state.register_artifact(project, run, task_id="01", source=source, name="result.md")
+    result = gates.run(run)
+    assert "RESULT: FAIL" in result
+    assert "manifest execution requires nonempty BUILD TASKS" in result
+    if not synthesis:
+        assert "requires exactly one Synthesis section" in result
